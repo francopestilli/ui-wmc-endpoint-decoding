@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GIFTI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://brainvis.wustl.edu/caret6/xml_schemas/GIFTI_Caret.xsd"
+       Version="1"
+       NumberOfDataArrays="1">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[AnatomicalStructurePrimary]]></Name>
+         <Value><![CDATA[CortexLeft]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ParentProvenance]]></Name>
+         <Value><![CDATA[/home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii:
+/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-math '(x/1062)' ./cortexmap/cortexmap/func/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii -var x ./cortexmap/cortexmap/func/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii
+
+/home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/mask/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii:
+/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-math '(x>0.15)' /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/mask/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii -var x /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii
+
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ProgramProvenance]]></Name>
+         <Value><![CDATA[Connectome Workbench
+Type: Command Line Application
+Version: 2.0.0
+Qt Compiled Version: 5.7.0
+Qt Runtime Version: 5.7.0
+Commit: a4824b22b46b2d5afa3e543a483f73faea27bcf5
+Commit Date: 2024-06-14 15:38:26 -0500
+Compiler: g++ (/usr/bin)
+Compiler Version: 4.8.4
+Compiled Debug: NO
+Operating System: Linux
+Compiled with OpenMP: YES
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[Provenance]]></Name>
+         <Value><![CDATA[/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-mask /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/mask/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0.15/lh.leftparietoThalamic_box_1mm_LPI_FiberEndpoint.smooth_3.func.gii]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[WorkingDirectory]]></Name>
+         <Value><![CDATA[/home/danielareyes/Documents/analysis/1_avg/app]]></Value>
+      </MD>
+   </MetaData>
+   <LabelTable>
+      <Label Key="0" Red="1" Green="1" Blue="1" Alpha="0"><![CDATA[???]]></Label>
+   </LabelTable>
+<DataArray Intent="NIFTI_INTENT_NORMAL"
+           DataType="NIFTI_TYPE_FLOAT32"
+           ArrayIndexingOrder="RowMajorOrder"
+           Dimensionality="1"
+           Dim0="163842"
+           Encoding="GZipBase64Binary"
+           Endian="LittleEndian"
+           ExternalFileName=""
+           ExternalFileOffset="0">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[Name]]></Name>
+         <Value><![CDATA[lh_leftparietoThalamic_box_1mm_LPI_FiberEndpoint, smooth 3]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[PaletteColorMapping]]></Name>
+         <Value><![CDATA[<PaletteColorMapping Version="1">
+   <ScaleMode>MODE_AUTO_SCALE_PERCENTAGE</ScaleMode>
+   <AutoScalePercentageValues>98.000000 2.000000 4.000000 96.000000</AutoScalePercentageValues>
+   <AutoScaleAbsolutePercentageValues>2.000000 98.000000</AutoScaleAbsolutePercentageValues>
+   <UserScaleValues>-100.000000 0.000000 0.000000 100.000000</UserScaleValues>
+   <PaletteName>videen_style</PaletteName>
+   <InterpolatePalette>true</InterpolatePalette>
+   <InvertPalette>OFF</InvertPalette>
+   <DisplayPositiveData>true</DisplayPositiveData>
+   <DisplayZeroData>false</DisplayZeroData>
+   <DisplayNegativeData>false</DisplayNegativeData>
+   <ThresholdTest>THRESHOLD_TEST_SHOW_OUTSIDE</ThresholdTest>
+   <ThresholdType>THRESHOLD_TYPE_OFF</ThresholdType>
+   <ThresholdFailureInGreen>false</ThresholdFailureInGreen>
+   <ThresholdNormalValues>-1.000000 1.000000</ThresholdNormalValues>
+   <ThresholdMappedValues>-1.000000 1.000000</ThresholdMappedValues>
+   <ThresholdMappedAvgAreaValues>-1.000000 1.000000</ThresholdMappedAvgAreaValues>
+   <ThresholdDataName></ThresholdDataName>
+   <ThresholdRangeMode>PALETTE_THRESHOLD_RANGE_MODE_FILE</ThresholdRangeMode>
+   <ThresholdLowHighLinked>false</ThresholdLowHighLinked>
+   <ThresholdOutlineDrawingMode>OFF</ThresholdOutlineDrawingMode>
+   <ThresholdOutlineDrawingColor>WHITE</ThresholdOutlineDrawingColor>
+   <HistogramRangeMode>PALETTE_HISTOGRAM_RANGE_ALL</HistogramRangeMode>
+   <HistogramBarsVisible>true</HistogramBarsVisible>
+   <HistogramEnvelopeVisible>false</HistogramEnvelopeVisible>
+   <HistogramBarsColor>CUSTOM</HistogramBarsColor>
+   <HistogramEnvelopeColor>RED</HistogramEnvelopeColor>
+   <HistogramEnvelopeLineWidthPercentage>0.5</HistogramEnvelopeLineWidthPercentage>
+   <HistogramNumberOfBuckets>100</HistogramNumberOfBuckets>
+   <NumericFormatMode>AUTO</NumericFormatMode>
+   <PrecisionDigits>2</PrecisionDigits>
+   <NumericSubivisions>0</NumericSubivisions>
+   <ColorBarValuesMode>DATA</ColorBarValuesMode>
+   <ShowTickMarksSelected>false</ShowTickMarksSelected>
+</PaletteColorMapping>
+]]></Value>
+      </MD>
+   </MetaData>
+   <Data>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</Data>
+</DataArray>
+</GIFTI>

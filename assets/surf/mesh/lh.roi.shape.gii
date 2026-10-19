@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GIFTI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://brainvis.wustl.edu/caret6/xml_schemas/GIFTI_Caret.xsd"
+       Version="1"
+       NumberOfDataArrays="1">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[AnatomicalStructurePrimary]]></Name>
+         <Value><![CDATA[CortexLeft]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ParentProvenance]]></Name>
+         <Value><![CDATA[./cortexmap/cortexmap/surf/lh.roi.shape.gii:
+/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-math '(x+y)' ./cortexmap/cortexmap/surf/lh.roi.shape.gii -var x ./cortexmap/cortexmap/surf/lh.roi.shape.gii -var y ../data/sub-168240/cortexmap/surf/lh.roi.shape.gii
+
+../data/sub-168341/cortexmap/surf/lh.roi.shape.gii:
+/usr/local/workbench/bin_linux64/../exe_linux64/wb_command -metric-remove-islands ./cortexmap/cortexmap/surf//lh.midthickness.fsaverage.surf.gii ./cortexmap/cortexmap/surf//lh.roi.shape.gii ./cortexmap/cortexmap/surf//lh.roi.shape.gii
+
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ProgramProvenance]]></Name>
+         <Value><![CDATA[Connectome Workbench
+Type: Command Line Application
+Version: 2.0.0
+Qt Compiled Version: 5.7.0
+Qt Runtime Version: 5.7.0
+Commit: a4824b22b46b2d5afa3e543a483f73faea27bcf5
+Commit Date: 2024-06-14 15:38:26 -0500
+Compiler: g++ (/usr/bin)
+Compiler Version: 4.8.4
+Compiled Debug: NO
+Operating System: Linux
+Compiled with OpenMP: YES
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[Provenance]]></Name>
+         <Value><![CDATA[/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-math '(x+y)' ./cortexmap/cortexmap/surf/lh.roi.shape.gii -var x ./cortexmap/cortexmap/surf/lh.roi.shape.gii -var y ../data/sub-168341/cortexmap/surf/lh.roi.shape.gii]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[WorkingDirectory]]></Name>
+         <Value><![CDATA[/home/danielareyes/Documents/analysis/1_avg/app]]></Value>
+      </MD>
+   </MetaData>
+   <LabelTable>
+      <Label Key="0" Red="1" Green="1" Blue="1" Alpha="0"><![CDATA[???]]></Label>
+   </LabelTable>
+<DataArray Intent="NIFTI_INTENT_NORMAL"
+           DataType="NIFTI_TYPE_FLOAT32"
+           ArrayIndexingOrder="RowMajorOrder"
+           Dimensionality="1"
+           Dim0="163842"
+           Encoding="GZipBase64Binary"
+           Endian="LittleEndian"
+           ExternalFileName=""
+           ExternalFileOffset="0">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[Name]]></Name>
+         <Value><![CDATA[lh_ROI]]></Value>
+      </MD>
+   </MetaData>
+   <Data>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</Data>
+</DataArray>
+</GIFTI>

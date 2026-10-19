@@ -1,0 +1,421 @@
+{
+"anterioFrontalCC": {
+"lh": [
+"LPI"
+],
+"rh": [
+"RAS"
+]
+},
+"forcepsMajor": {
+"lh": [
+"LPI"
+],
+"rh": [
+"RAS"
+]
+},
+"forcepsMinor": {
+"lh": [
+"LPI"
+],
+"rh": [
+"RAS"
+]
+},
+"leftAnterioFrontoCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"LPI"
+]
+},
+"leftArc": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftAslant": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftCST": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftContraAnterioFrontoCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"LPI"
+]
+},
+"leftContraMotorCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"LPI"
+]
+},
+"leftIFOF": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftILF": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftMDLFang": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftMDLFspl": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftMotorCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"LPI"
+]
+},
+"leftOccipitoCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"RAS"
+]
+},
+"leftOpticRadiation": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftParietoCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"LPI"
+]
+},
+"leftSLF1And2": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftSLF3": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftTPC": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftThalamicoCerebellar": {
+"lh": [
+"LPI",
+"RAS"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"leftUncinate": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftVOF": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftcingulum": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftfrontoThalamic": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftmeyer": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftmotorThalamic": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftpArc": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftparietoThalamic": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"leftspinoThalamic": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"lefttemporoThalamic": {
+"lh": [
+"LPI",
+"RAS"
+]
+},
+"middleFrontalCC": {
+"lh": [
+"LPI"
+],
+"rh": [
+"RAS"
+]
+},
+"parietalCC": {
+"lh": [
+"LPI"
+],
+"rh": [
+"RAS"
+]
+},
+"rightAnterioFrontoCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightArc": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightAslant": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightCST": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightContraAnterioFrontoCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightContraMotorCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightIFOF": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightILF": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightMDLFang": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightMDLFspl": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightMotorCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightOccipitoCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightOpticRadiation": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightParietoCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightSLF1And2": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightSLF3": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightTPC": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightThalamicoCerebellar": {
+"lh": [
+"LPI"
+],
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightUncinate": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightVOF": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightcingulum": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightfrontoThalamic": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightmeyer": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightmotorThalamic": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightpArc": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightparietoThalamic": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"rightspinoThalamic": {
+"rh": [
+"LPI",
+"RAS"
+]
+},
+"righttemporoThalamic": {
+"rh": [
+"LPI",
+"RAS"
+]
+}
+}

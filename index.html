@@ -4,8 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WMC Tract Endpoint Decoding</title>
+  <link rel="icon" href="data:," />
+  <!-- Libraries: Vue 2 (UI), PapaParse (CSV), pako (gzip'd GIFTI data), three.js (3D surfaces) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.7.14/vue.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -14,48 +18,42 @@
   <wmc-viewer v-else :config="config"></wmc-viewer>
 </div>
 
-<script src="viewer.js"></script>
+<script src="surf3d.js"></script>   <!-- GIFTI parsing + 3D cortical endpoint maps -->
+<script src="charts.js"></script>   <!-- radar chart + word cloud -->
+<script src="cluster.js"></script>  <!-- hierarchical clustering + dendrogram -->
+<script src="viewer.js"></script>   <!-- main viewer component -->
 <script>
-  // Base URL for per-tract PNG images on GitHub (public repo, raw content)
-  const GH_RAW = 'https://raw.githubusercontent.com/kimberlylray/ui-wmc-endpoint-decoding/main/assets/decoding/Decoding';
-
   new Vue({
     el: '#app',
     data: {
       error: null,
       config: {
-        // base URL where testdata lives — override per deployment
+        // Folder holding one subfolder per threshold, each with:
+        //   matrix.csv                    tract × topic decoding (joint LPI + RAS)
+        //   matrix_RAS.csv / matrix_LPI.csv  each endpoint decoded on its own
+        //   cluster-matrix.csv            cluster × topic decoding
         dataBase: 'testdata',
-        // Threshold config: folder = local data subfolder
-        //   noClusters   – hides Cluster tab/mode (true when no dendro/cluster images)
-        //   tractImgsBase – base URL to per-tract PNG images (radar/wordcloud)
-        //   tractImgSuffix – suffix used in per-tract image filenames
+
+        // fsaverage midthickness mesh (+ cortex mask + thickness) that the
+        // func.gii endpoint maps were made on, so vertices line up exactly.
+        surfMeshBase: 'assets/surf/mesh',
+
+        // Full LDA term list per topic (from scripts/export_topic_terms.py).
+        topicTermsUrl: 'assets/decoding/topic-terms.json',
+
+        // One entry per threshold in the dropdown (label → settings):
+        //   folder     subfolder of dataBase with this threshold's CSVs
+        //   surfBase   folder of per-tract endpoint maps, named
+        //              "{lh|rh}.{tract}.{LPI|RAS}.func.gii" (omit to hide the 3D maps)
+        //   cut        dendrogram distance cut for the live clustering (default 1.0)
+        //   noClusters true hides the Cluster tab
         thresholds: {
-          '0.15 (7 clusters)': {
-            folder: 'thr-15',
-            tractImgsBase: GH_RAW + '/threshold-15_tract_decoding',
-            tractImgSuffix: 'thr-15'
-          },
-          '0.15 (5 clusters)': {
-            folder: 'thr-15_5clusters',
-            tractImgsBase: GH_RAW + '/threshold-15_tract_decoding',
-            tractImgSuffix: 'thr-15'
-          },
-          '0.05 (9 clusters)': {
-            folder: 'thr-05',
-            tractImgsBase: GH_RAW + '/threshold-05_tract_decoding',
-            tractImgSuffix: 'thr-05'
-          },
-          '0.10 (8 clusters)': {
-            folder: 'thr-10',
-            tractImgsBase: GH_RAW + '/threshold-10_tract_decoding',
-            tractImgSuffix: 'thr-10'
-          },
-          '0.20 (7 clusters)': {
-            folder: 'thr-20',
-            tractImgsBase: GH_RAW + '/threshold-20_tract_decoding',
-            tractImgSuffix: 'thr-20'
-          }
+          '0.05 (9 clusters)': { folder: 'thr-05', surfBase: 'testdata/thr-05/func' },
+          '0.10 (8 clusters)': { folder: 'thr-10', surfBase: 'testdata/thr-10/func' },
+          '0.15 (7 clusters)': { folder: 'thr-15', surfBase: 'testdata/thr-15/func' },
+          // Same 0.15 decoding and endpoint maps, dendrogram cut higher to give 5 clusters
+          '0.15 (5 clusters)': { folder: 'thr-15_5clusters', surfBase: 'testdata/thr-15/func', cut: 1.2657 },
+          '0.20 (7 clusters)': { folder: 'thr-20', surfBase: 'testdata/thr-20/func' }
         },
         defaultThreshold: '0.15 (7 clusters)'
       }

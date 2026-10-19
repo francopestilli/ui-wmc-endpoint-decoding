@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GIFTI xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:noNamespaceSchemaLocation="http://brainvis.wustl.edu/caret6/xml_schemas/GIFTI_Caret.xsd"
+       Version="1"
+       NumberOfDataArrays="1">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[AnatomicalStructurePrimary]]></Name>
+         <Value><![CDATA[CortexLeft]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ParentProvenance]]></Name>
+         <Value><![CDATA[/home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii:
+/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-math '(x/1062)' ./cortexmap/cortexmap/func/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii -var x ./cortexmap/cortexmap/func/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii
+
+/home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/mask/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii:
+/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-math '(x>0.20)' /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/mask/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii -var x /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii
+
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[ProgramProvenance]]></Name>
+         <Value><![CDATA[Connectome Workbench
+Type: Command Line Application
+Version: 2.0.0
+Qt Compiled Version: 5.7.0
+Qt Runtime Version: 5.7.0
+Commit: a4824b22b46b2d5afa3e543a483f73faea27bcf5
+Commit Date: 2024-06-14 15:38:26 -0500
+Compiler: g++ (/usr/bin)
+Compiler Version: 4.8.4
+Compiled Debug: NO
+Operating System: Linux
+Compiled with OpenMP: YES
+]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[Provenance]]></Name>
+         <Value><![CDATA[/home/danielareyes/Downloads/workbench/bin_linux64/../exe_linux64/wb_command -metric-mask /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/mask/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii /home/danielareyes/Documents/analysis/1_avg/app/cortexmap/cortexmap/func_smooth_0.20/lh.leftMotorCerebellar_box_1mm_RAS_FiberEndpoint.smooth_3.func.gii]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[WorkingDirectory]]></Name>
+         <Value><![CDATA[/home/danielareyes/Documents/analysis/1_avg/app]]></Value>
+      </MD>
+   </MetaData>
+   <LabelTable>
+      <Label Key="0" Red="1" Green="1" Blue="1" Alpha="0"><![CDATA[???]]></Label>
+   </LabelTable>
+<DataArray Intent="NIFTI_INTENT_NORMAL"
+           DataType="NIFTI_TYPE_FLOAT32"
+           ArrayIndexingOrder="RowMajorOrder"
+           Dimensionality="1"
+           Dim0="163842"
+           Encoding="GZipBase64Binary"
+           Endian="LittleEndian"
+           ExternalFileName=""
+           ExternalFileOffset="0">
+   <MetaData>
+      <MD>
+         <Name><![CDATA[Name]]></Name>
+         <Value><![CDATA[lh_leftMotorCerebellar_box_1mm_RAS_FiberEndpoint, smooth 3]]></Value>
+      </MD>
+      <MD>
+         <Name><![CDATA[PaletteColorMapping]]></Name>
+         <Value><![CDATA[<PaletteColorMapping Version="1">
+   <ScaleMode>MODE_AUTO_SCALE_PERCENTAGE</ScaleMode>
+   <AutoScalePercentageValues>98.000000 2.000000 4.000000 96.000000</AutoScalePercentageValues>
+   <AutoScaleAbsolutePercentageValues>2.000000 98.000000</AutoScaleAbsolutePercentageValues>
+   <UserScaleValues>-100.000000 0.000000 0.000000 100.000000</UserScaleValues>
+   <PaletteName>videen_style</PaletteName>
+   <InterpolatePalette>true</InterpolatePalette>
+   <InvertPalette>OFF</InvertPalette>
+   <DisplayPositiveData>true</DisplayPositiveData>
+   <DisplayZeroData>false</DisplayZeroData>
+   <DisplayNegativeData>false</DisplayNegativeData>
+   <ThresholdTest>THRESHOLD_TEST_SHOW_OUTSIDE</ThresholdTest>
+   <ThresholdType>THRESHOLD_TYPE_OFF</ThresholdType>
+   <ThresholdFailureInGreen>false</ThresholdFailureInGreen>
+   <ThresholdNormalValues>-1.000000 1.000000</ThresholdNormalValues>
+   <ThresholdMappedValues>-1.000000 1.000000</ThresholdMappedValues>
+   <ThresholdMappedAvgAreaValues>-1.000000 1.000000</ThresholdMappedAvgAreaValues>
+   <ThresholdDataName></ThresholdDataName>
+   <ThresholdRangeMode>PALETTE_THRESHOLD_RANGE_MODE_FILE</ThresholdRangeMode>
+   <ThresholdLowHighLinked>false</ThresholdLowHighLinked>
+   <ThresholdOutlineDrawingMode>OFF</ThresholdOutlineDrawingMode>
+   <ThresholdOutlineDrawingColor>WHITE</ThresholdOutlineDrawingColor>
+   <HistogramRangeMode>PALETTE_HISTOGRAM_RANGE_ALL</HistogramRangeMode>
+   <HistogramBarsVisible>true</HistogramBarsVisible>
+   <HistogramEnvelopeVisible>false</HistogramEnvelopeVisible>
+   <HistogramBarsColor>CUSTOM</HistogramBarsColor>
+   <HistogramEnvelopeColor>RED</HistogramEnvelopeColor>
+   <HistogramEnvelopeLineWidthPercentage>0.5</HistogramEnvelopeLineWidthPercentage>
+   <HistogramNumberOfBuckets>100</HistogramNumberOfBuckets>
+   <NumericFormatMode>AUTO</NumericFormatMode>
+   <PrecisionDigits>2</PrecisionDigits>
+   <NumericSubivisions>0</NumericSubivisions>
+   <ColorBarValuesMode>DATA</ColorBarValuesMode>
+   <ShowTickMarksSelected>false</ShowTickMarksSelected>
+</PaletteColorMapping>
+]]></Value>
+      </MD>
+   </MetaData>
+   <Data>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</Data>
+</DataArray>
+</GIFTI>

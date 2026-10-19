@@ -1,130 +1,104 @@
 # WMC Tract Endpoint Decoding Viewer
 
-Interactive visualization of white matter tract endpoint decoding using Neurosynth meta-analytic topics, built for the [brainlife.io](https://brainlife.io) platform.
+Interactive visualization of white matter tract endpoint decoding — how the cortical endpoints of each tract map onto meta-analytic cognitive topics (NeuroQuery LDA topics, decoded with [gradec](https://github.com/JulioAPeraza/gradec)) — built for the [brainlife.io](https://brainlife.io) platform.
+
+Everything is drawn live in the browser from CSV / GIFTI data: no pre-rendered figures are needed.
 
 ## What it shows
 
-The viewer has two exploration modes accessible from the sidebar:
+**Cluster View**
+- Dendrogram of tract similarity, computed live (click a branch → cluster, a name → tract)
+- Member tracts listed next to the cluster label (click → Tract View)
+- 3D cortical endpoint map of the whole cluster (LPI + RAS combined, max across member tracts)
+- Top cognitive topics, radar chart and word cloud from the cluster's own decoding
 
-**Cluster Mode** — browse tracts grouped by hierarchical clustering:
-- Dendrogram showing tract similarity structure
-- Per-cluster cortical surface map, radar chart, and word cloud (pre-generated PNGs)
-- Tract list for each cluster (click any tract to jump to Tract Mode)
+**Tract View**
+- 3D cortical endpoint maps for the RAS and LPI endpoints (drag to rotate, scroll to zoom)
+- Decoding of the joint (LPI + RAS) map next to the RAS-only and LPI-only decodings: top topics, radar chart and word cloud for each
+- Searchable list of all tracts, colored by cluster
 
-**Tract Mode** — explore individual tracts:
-- Searchable list of all 51 tracts, color-coded by cluster membership
-- Top 15 Neurosynth topics as a bar chart (computed live from the matrix)
-- Full decoding score strip across all 104 topics
+**Full Matrix** — tract × topic heatmap with hover tooltips; click a row to open that tract.
 
-**Matrix Tab** — full 51 × 104 heatmap with hover tooltips; click any row to jump to Tract Mode.
+**Topic details** — click any topic bar to see the topic's full 40-term list with LDA weights and term type (Functional / Anatomical / Clinical / Non-specific). The *Functional terms only* switch (on by default, matching the gradec figures) also drives the radar labels and word clouds.
 
-## Data format
+Charts use the cluster's color throughout (a tract takes its cluster's color).
 
-Each dataset lives in its own subfolder under `testdata/`:
+## How clustering works
+
+`cluster.js` reproduces the clustering in `Kims-Revisions/decode-tracts.ipynb`:
+
+1. keep tracts with no missing topic scores (`matrix.dropna(axis=0)`)
+2. distance = 1 − Pearson r between tracts across topics
+3. complete-linkage hierarchical clustering
+4. cut the tree at distance `cut` (default 1.0; set per threshold in `index.html`)
+
+Cluster numbers follow scipy's `fcluster` exactly, so cluster *N* matches row *N* of `cluster-matrix.csv`. Tracts with missing scores are shown as "Not clustered".
+
+## Data layout
 
 ```
 testdata/
-└── thr-15/                                 ← threshold 0.15, 7 clusters
-    ├── matrix.csv                           ← 51 tracts × 104 topics (Pearson r)
-    ├── clusters.json                        ← cluster assignments
-    ├── dendro.png                           ← dendrogram image
-    ├── 1_surf.png                           ← cortical surface map for cluster 1
-    ├── 1_radar.png                          ← radar chart for cluster 1
-    ├── 1_wordcloud.png                      ← word cloud for cluster 1
-    └── … (up to N clusters)
-└── thr-15_5clusters/                       ← same threshold, 5-cluster solution
-    ├── matrix.csv                           ← (same matrix, different clustering)
-    ├── clusters.json                        ← 5-cluster assignments
-    ├── dendro.png
-    └── … (5 sets of surf/radar/wordcloud)
+└── thr-15/                    ← one folder per threshold
+    ├── matrix.csv             ← tracts × topics, joint (LPI + RAS) decoding (Pearson r)
+    ├── matrix_RAS.csv         ← RAS endpoint decoded on its own (same layout)
+    ├── matrix_LPI.csv         ← LPI endpoint decoded on its own (same layout)
+    ├── cluster-matrix.csv     ← clusters × topics, each cluster's combined map decoded
+    └── func/
+        ├── {lh|rh}.{tract}.{LPI|RAS}.func.gii   ← per-tract endpoint maps (fsaverage)
+        └── manifest.json      ← which hemisphere/orientation files exist per tract
+assets/
+├── surf/mesh/                 ← fsaverage midthickness mesh, cortex mask, thickness
+└── decoding/topic-terms.json  ← full term list per topic (see scripts/)
 ```
 
-### matrix.csv
+**matrix.csv** — first column `tract`, then one column per topic named `{id}_{term1}_{term2}_{term3}`; values are Pearson r, `NaN` for missing. `{id}` is the 1-based row of the topic in the LDA features file.
 
-CSV with header row. First column = tract name (`tract`), remaining columns = Neurosynth topic IDs
-in the format `{id}_{term1}_{term2}_{term3}`. Values are Pearson correlation coefficients. Use `NaN` for missing data.
+**topic-terms.json** — regenerate with
 
-### clusters.json
-
-```json
-{
-  "numClusters": 7,
-  "assignments": {
-    "leftCST": 4,
-    "rightCST": 4,
-    "leftpArc": 2,
-    ...
-  }
-}
+```bash
+python3 scripts/export_topic_terms.py ../Kims-Revisions/data/decoding
 ```
 
-If `clusters.json` is absent, the viewer auto-detects the number of clusters by probing for `{n}_surf.png` files and splits tracts equally (placeholder only — add `clusters.json` for accurate assignments).
+which reads gradec's `source-neuroquery_desc-lda_{features,frequencies,classification}.csv`.
 
-### Image naming convention
+## Adding a threshold
 
-Cluster images must be named exactly: `{clusterIndex}_surf.png`, `{clusterIndex}_radar.png`, `{clusterIndex}_wordcloud.png`
+1. Add a folder under `testdata/` with the files above.
+2. Add an entry to `config.thresholds` in `index.html`:
 
-The original filenames from Python scripts (e.g. `1_LPI+RAS_thr-15_surf.png`) need to be renamed to `1_surf.png` etc.
-
-## Adding a new threshold / clustering
-
-### With cluster images (dendro + per-cluster surf/radar/wordcloud)
-
-1. Create a subfolder under `testdata/` with `matrix.csv`, `clusters.json`, `dendro.png`, and `{n}_surf/radar/wordcloud.png` files
-2. Add the entry to `config.thresholds` in `index.html`:
    ```js
-   thresholds: {
-     '0.20 (7 clusters)': {
-       folder: 'thr-20',
-       tractImgsBase: 'https://...path-to-per-tract-images',  // optional
-       tractImgSuffix: 'thr-20'                                // must match filename suffix
-     }
-   }
+   '0.25 (6 clusters)': { folder: 'thr-25', surfBase: 'testdata/thr-25/func', cut: 1.0 }
    ```
 
-### Without cluster images (matrix only)
-
-1. Create a subfolder under `testdata/` with only `matrix.csv`
-2. Add `noClusters: true` to hide Cluster tab/mode
-3. Optionally provide `tractImgsBase` URL pointing to per-tract radar/wordcloud images:
-   ```js
-   thresholds: {
-     '0.05': {
-       folder: 'thr-05',
-       noClusters: true,
-       tractImgsBase: 'https://raw.githubusercontent.com/.../threshold-05_tract_decoding',
-       tractImgSuffix: 'thr-05'
-     }
-   }
-   ```
-   Per-tract images must be named: `{tractName}_{tractImgSuffix}_{radar|wordcloud}.png`
+   Options: `folder` (required), `surfBase` (omit to hide the 3D maps), `cut` (dendrogram cut, default 1.0), `noClusters: true` (hide the Cluster View).
 
 ## Running locally
 
 ```bash
 npm install
-npm start
-# opens http://localhost:3000
+npm start          # serves the folder, e.g. http://localhost:3000
 ```
 
-## Embedding in brainlife.io
+Any static file server works (e.g. `python3 -m http.server 3000`); opening `index.html` directly from disk will not, because the browser blocks loading the data files.
 
-Override `dataBase` in the `config` object to point at your brainlife output URL:
+## Hosting
 
-```js
-config: {
-  dataBase: 'https://brainlife.io/api/warehouse/download/....',
-  thresholds: { '0.15': 'thr-15' },
-  defaultThreshold: '0.15'
-}
-```
+The site is static, so it can be served from GitHub Pages (Settings → Pages → deploy from `main`, folder `/`). For brainlife.io, point `dataBase` in `index.html` at the brainlife output location.
 
-## Dependencies (CDN, no build step)
+## Code
 
-- [Vue 2](https://v2.vuejs.org/) — reactive UI
-- [PapaParse](https://www.papaparse.com/) — CSV parsing
+| File | Role |
+|---|---|
+| `index.html` | page shell + configuration (thresholds, data paths) |
+| `viewer.js` | main Vue component (views, data loading, interaction) |
+| `cluster.js` | hierarchical clustering + dendrogram |
+| `charts.js` | radar chart + word cloud |
+| `surf3d.js` | GIFTI parsing + three.js cortical surface rendering |
+| `scripts/export_topic_terms.py` | builds `assets/decoding/topic-terms.json` |
+
+Dependencies are loaded from a CDN, with no build step: [Vue 2](https://v2.vuejs.org/), [PapaParse](https://www.papaparse.com/), [pako](https://github.com/nodeca/pako), [three.js](https://threejs.org/).
 
 ## Credits
 
-Developed by Kim Ray, University of Texas at Austin (Pestilli Lab).  
+Developed by Kim Ray, University of Texas at Austin (Pestilli Lab).
 Supported by the [brainlife.io](https://brainlife.io) platform.

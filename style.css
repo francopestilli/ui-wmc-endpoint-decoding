@@ -161,6 +161,19 @@ body {
   display: block;
   border-radius: 4px;
 }
+.dendro-wrap { max-height: 58vh; overflow-y: auto; }
+
+/* Live dendrogram (cluster.js) */
+.dendro-svg { display: block; width: 100%; height: auto; }
+.dendro-svg .dendro-hit { stroke: transparent; stroke-width: 9; cursor: pointer; pointer-events: stroke; }
+.dendro-svg .dendro-hit:hover { stroke: rgba(255,255,255,0.08); }
+.dendro-svg .dendro-cut { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+.dendro-svg .dendro-leaf { font-size: 10px; cursor: pointer; }
+.dendro-svg .dendro-leaf:hover, .dendro-svg .dendro-leaf.active { font-weight: 700; text-decoration: underline; }
+.dendro-svg .dendro-leaf.dim { opacity: 0.4; }
+.dendro-svg .dendro-axis line { stroke: var(--text-muted); }
+.dendro-svg .dendro-axis text { fill: var(--text-muted); font-size: 9px; }
+.dendro-note { font-size: 11px; color: var(--text-muted); margin-top: 6px; line-height: 1.4; }
 
 .cluster-list {
   flex: 1;
@@ -347,6 +360,53 @@ body {
   margin-bottom: 8px;
 }
 
+/* Live 3D cortical endpoint map (per-tract func.gii) */
+.tract-surf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  max-width: 900px;
+}
+.surf-card { display: flex; flex-direction: column; }
+.surf-canvas-wrap {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  background: #0a0b14;
+}
+.surf-canvas-wrap canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: none;
+  cursor: grab;
+}
+.surf-canvas-wrap canvas:active { cursor: grabbing; }
+.surf-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+.surf-empty {
+  color: var(--text-muted);
+  font-size: 12px;
+  text-align: center;
+  padding: 0 16px;
+}
+.surf-legend {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.legend-grad.hot {
+  background: linear-gradient(to right, #000, #d93f00, #ffd100, #fff);
+}
+
 /* ─── Tract View ───────────────────────────────────────────────── */
 .show-cluster-btn {
   margin-left: auto;
@@ -370,7 +430,40 @@ body {
 }
 
 /* Top-topics bar chart */
-.topic-bars { max-width: 700px; }
+.topic-bars { max-width: 700px; flex: 1 1 520px; min-width: 0; }
+.topics-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-start; max-width: 1100px; }
+.topic-bar-row.clickable { cursor: pointer; border-radius: 4px; padding: 1px 4px; margin-left: -4px; }
+.topic-bar-row.clickable:hover { background: var(--surface2); }
+.topic-bar-row.clickable:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.topic-bar-row.active { background: var(--surface2); box-shadow: inset 3px 0 0 var(--accent); }
+.topic-bar-row.active .topic-bar-label { color: var(--accent); font-weight: 600; }
+
+/* Topic detail panel (full term list for the clicked topic) */
+.topic-detail { flex: 0 1 340px; min-width: 260px; }
+.topic-detail-title { display: flex; align-items: center; justify-content: space-between; }
+.topic-detail-close {
+  background: none; border: none; color: var(--text-muted); font-size: 18px; line-height: 1;
+  cursor: pointer; padding: 0 2px;
+}
+.topic-detail-close:hover { color: var(--text); }
+.topic-detail-body { padding: 12px 14px; }
+.topic-detail-name { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.topic-detail-score { font-size: 12px; color: var(--text-muted); margin-bottom: 8px; }
+.topic-detail-filter { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-muted); margin-bottom: 8px; cursor: pointer; }
+.term-list { list-style: none; max-height: 360px; overflow-y: auto; margin: 0 -4px; padding: 0 4px; }
+.term-row { display: grid; grid-template-columns: 22px 1fr 18px 70px; align-items: center; gap: 8px; padding: 3px 0; font-size: 12px; border-bottom: 1px solid var(--border); }
+.term-rank { color: var(--text-muted); font-size: 10px; text-align: right; }
+.term-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.term-bar { height: 6px; background: var(--surface2); border-radius: 3px; overflow: hidden; }
+.term-bar > span { display: block; height: 100%; background: var(--accent); opacity: .8; }
+.term-class { display: inline-block; width: 16px; height: 16px; line-height: 16px; text-align: center; border-radius: 3px; font-size: 10px; font-weight: 700; color: #0f1117; }
+.tc-functional  { background: #4f8ef7; }
+.tc-anatomical  { background: #9b75d4; }
+.tc-clinical    { background: #e07b7b; }
+.tc-nonspecific { background: #7a7f9a; }
+.topic-detail-legend { margin-top: 10px; font-size: 11px; color: var(--text-muted); line-height: 1.9; }
+.topic-detail-legend .term-class { margin: 0 2px 0 6px; }
+.topic-detail-legend .term-class:first-child { margin-left: 0; }
 .topic-bar-row {
   display: flex;
   align-items: center;
@@ -552,3 +645,51 @@ table.matrix-table td.cell:hover { outline: 2px solid var(--accent); }
 ::-webkit-scrollbar-track { background: var(--bg); }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* ─── Live radar + word cloud (charts.js) ─────────────────────────
+   White card, like the original PNG figures, so cluster colours keep
+   their contrast and the charts screenshot cleanly for papers/slides. */
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  background: #fff;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+.chart-svg .radar-grid   { fill: none; stroke: #c9c9c9; stroke-width: 0.8; }
+.chart-svg .radar-spoke  { stroke: #888; stroke-width: 1; stroke-dasharray: 5 4; }
+.chart-svg .radar-bar    { stroke: #fff; stroke-width: 0.5; }
+.chart-svg .radar-bar:hover { opacity: 0.85; }
+.chart-svg .radar-tick   { fill: #6f6f6f; font-size: 14px; paint-order: stroke; stroke: #fff; stroke-width: 3px; }
+.chart-svg .radar-label  { fill: #1f1f1f; font-size: 19px; }
+.chart-svg .cloud-word   { font-weight: 600; cursor: default; }
+.chart-svg .chart-empty  { fill: #8a8a8a; font-size: 18px; }
+
+/* "Functional terms only" toggle above the radar / word cloud */
+.chart-term-toggle { display: flex; align-items: center; gap: 6px; margin: 20px 0 10px; font-size: 12px; cursor: pointer; }
+.chart-term-toggle .text-muted { font-size: 11px; }
+
+/* Tract View: joint vs. RAS-only vs. LPI-only decoding, side by side */
+.endpoint-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; flex: 1 1 780px; max-width: 1100px; }
+.endpoint-col { min-width: 0; }
+.endpoint-col .topic-bars { max-width: none; }
+.endpoint-col .topic-bar-label { width: 128px; min-width: 128px; font-size: 11px; }
+.endpoint-col-title {
+  font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--text);
+  border-bottom: 1px solid var(--border); padding-bottom: 6px; margin-bottom: 8px;
+}
+.endpoint-empty { font-size: 12px; color: var(--text-muted); padding: 10px 0; }
+.chart-empty-card { display: flex; align-items: center; justify-content: center; min-height: 200px; padding: 16px; text-align: center; }
+.endpoint-charts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; max-width: 1100px; margin-bottom: 8px; }
+.topic-detail-side { display: block; }
+.topics-row { max-width: 1480px; }
+@media (max-width: 1100px) {
+  .endpoint-cols, .endpoint-charts { grid-template-columns: 1fr; }
+}
+/* keep r values legible when they sit on top of a long bar */
+.topic-bar-val { color: var(--text); text-shadow: 0 0 3px rgba(0, 0, 0, .9), 0 0 1px rgba(0, 0, 0, .9); }
+
+/* Cluster View: member tracts listed in the header, next to the cluster label */
+.panel-cluster-header { flex-wrap: wrap; }
+.header-tract-list { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 12px; flex: 1 1 300px; }
+.header-tract-list .tract-tag { color: var(--text); }

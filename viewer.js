@@ -343,6 +343,32 @@ Vue.component('wmc-viewer', {
               </div>
             </div>
 
+            <!-- Network Correspondence: Dice overlap with canonical network atlases -->
+            <template v-if="networkAtlases.length">
+              <div class="tract-section-title" style="display:flex;align-items:center;">
+                Network Correspondence
+                <select class="network-atlas-select" v-model="networkAtlas">
+                  <option v-for="a in networkAtlases" :key="a" :value="a">{{ a }}</option>
+                </select>
+              </div>
+              <p class="view-intro">
+                Dice overlap between this cluster's combined endpoint map and each network in the selected
+                atlas, from the <a href="https://www.nature.com/articles/s41467-025-58176-9" target="_blank" rel="noopener">Network Correspondence Toolbox</a>
+                (Kong et al., 2025). Bold / starred networks are spin-test significant (p &lt; 0.05).
+              </p>
+              <div v-if="clusterNetworkRows.length" class="topic-bars">
+                <div v-for="item in clusterNetworkRows" :key="item.name" class="topic-bar-row">
+                  <div class="topic-bar-label" :class="{ 'network-sig': item.sig }" :title="item.name">{{ item.name }}</div>
+                  <div class="topic-bar-track">
+                    <div class="topic-bar-fill"
+                         :style="{ width: item.widthPct + '%', background: activeCluster.color, opacity: item.sig ? 1 : 0.35 }"></div>
+                    <span class="topic-bar-val">{{ item.dice.toFixed(3) }}{{ item.sig ? ' *' : '' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this cluster.</div>
+            </template>
+
             <!-- Mini strip: all topics for this cluster -->
             <template v-if="clusterMatrix[selectedCluster]">
               <div class="tract-section-title" style="margin-top:24px;">All Topics (decoding score)</div>
@@ -441,6 +467,32 @@ ${SURF_PANEL_TEMPLATE}
                 <div v-else class="endpoint-empty chart-empty-card">No {{ src.key }}-only decoding</div>
               </div>
             </div>
+
+            <!-- Network Correspondence: Dice overlap with canonical network atlases -->
+            <template v-if="networkAtlases.length">
+              <div class="tract-section-title" style="display:flex;align-items:center;">
+                Network Correspondence
+                <select class="network-atlas-select" v-model="networkAtlas">
+                  <option v-for="a in networkAtlases" :key="a" :value="a">{{ a }}</option>
+                </select>
+              </div>
+              <p class="view-intro">
+                Dice overlap between this tract's combined (LPI + RAS) endpoint map and each network in the
+                selected atlas, from the <a href="https://www.nature.com/articles/s41467-025-58176-9" target="_blank" rel="noopener">Network Correspondence Toolbox</a>
+                (Kong et al., 2025). Bold / starred networks are spin-test significant (p &lt; 0.05).
+              </p>
+              <div v-if="tractNetworkRows.length" class="topic-bars">
+                <div v-for="item in tractNetworkRows" :key="item.name" class="topic-bar-row">
+                  <div class="topic-bar-label" :class="{ 'network-sig': item.sig }" :title="item.name">{{ item.name }}</div>
+                  <div class="topic-bar-track">
+                    <div class="topic-bar-fill"
+                         :style="{ width: item.widthPct + '%', background: tractChartColor, opacity: item.sig ? 1 : 0.35 }"></div>
+                    <span class="topic-bar-val">{{ item.dice.toFixed(3) }}{{ item.sig ? ' *' : '' }}</span>
+                  </div>
+                </div>
+              </div>
+              <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this tract.</div>
+            </template>
 
             <!-- Mini strip: all topics for this tract -->
             <div class="tract-section-title" style="margin-top:24px;">All Topics (decoding score)</div>
@@ -549,7 +601,12 @@ ${SURF_PANEL_TEMPLATE}
       tooltip: { visible: false, x: 0, y: 0, tract: '', topic: '', value: null },
       // 3D cortical endpoint map (Tract View) — 'idle' | 'loading' | 'ready' | 'empty'
       surfStatus: { RAS: 'idle', LPI: 'idle' },
-      surfMax: { RAS: 0, LPI: 0 }
+      surfMax: { RAS: 0, LPI: 0 },
+      // Network Correspondence Toolbox (Kong et al. 2025) results, from
+      // network-correspondence.csv: { "tract|leftArc": { TY7: [{name,dice,p_value}], TY17: [...] } }
+      networkCorrespondence: {},
+      networkAtlases: [],        // atlas codes present in this threshold's CSV, e.g. ['TY7','TY17']
+      networkAtlas: null         // currently selected atlas code
     };
   },
 
@@ -572,6 +629,11 @@ ${SURF_PANEL_TEMPLATE}
     clusterScores() {
       return (this.selectedCluster && this.clusterMatrix[this.selectedCluster]) || null;
     },
+    // Network Correspondence Toolbox rows for the current selection + atlas.
+    // Sorted by Dice descending, with a bar width (% of the row's own max)
+    // and a `sig` flag (spin-test p < 0.05) baked in for the template.
+    tractNetworkRows()   { return this.sortedNetworkRows(this.networkRowsFor('tract', this.selectedTract)); },
+    clusterNetworkRows() { return this.sortedNetworkRows(this.networkRowsFor('cluster', this.selectedCluster)); },
     // Charts for a tract use the colour of the cluster it belongs to.
     tractChartColor() {
       const c = this.clusterAssignments[this.selectedTract];
@@ -743,6 +805,7 @@ ${SURF_PANEL_TEMPLATE}
           this.parseMatrix(results);
           this.loading = false;
           this.loadClusterMatrix();
+          this.loadNetworkCorrespondence();
           this.loadSideMatrices();
 
           // A tract the user had selected might not exist under this
@@ -988,6 +1051,66 @@ ${SURF_PANEL_TEMPLATE}
         },
         error: () => { /* cluster-matrix.csv not present for this threshold — fine, panel just hides */ }
       });
+    },
+
+    // Optional network-correspondence.csv: Dice overlap + spin-test p-value
+    // against canonical network atlases (Yeo 7/17, "TY7"/"TY17"), for every
+    // tract and cluster — computed offline by
+    // scripts/compute_network_correspondence.py using the Network
+    // Correspondence Toolbox (Kong et al. 2025, Nature Communications:
+    // https://www.nature.com/articles/s41467-025-58176-9). Missing file
+    // just means this threshold hasn't had it exported yet.
+    loadNetworkCorrespondence() {
+      this.networkCorrespondence = {};
+      this.networkAtlases = [];
+      const url = `${this.baseUrl}/network-correspondence.csv`;
+      Papa.parse(url, {
+        download: true,
+        header: true,
+        dynamicTyping: false,
+        skipEmptyLines: true,
+        complete: (results) => {
+          if (!results.data.length) return; // no file for this threshold
+          const byEntity = {};
+          const atlases = new Set();
+          results.data.forEach(row => {
+            const key = `${row.entity_type}|${row.entity_id}`;
+            const atlas = row.group;
+            atlases.add(atlas);
+            (byEntity[key] = byEntity[key] || {})[atlas] = byEntity[key][atlas] || [];
+            byEntity[key][atlas].push({
+              name: row.name,
+              dice: parseFloat(row.dice),
+              p_value: parseFloat(row.p_value)
+            });
+          });
+          this.networkCorrespondence = byEntity;
+          this.networkAtlases = Array.from(atlases).sort();
+          if (!this.networkAtlases.includes(this.networkAtlas)) {
+            this.networkAtlas = this.networkAtlases[0] || null;
+          }
+        },
+        error: () => { /* network-correspondence.csv not present for this threshold — panel just hides */ }
+      });
+    },
+
+    // Rows for the given atlas for whatever's currently selected (tract or cluster).
+    networkRowsFor(entityType, entityId) {
+      if (!entityId || !this.networkAtlas) return [];
+      const entity = this.networkCorrespondence[`${entityType}|${entityId}`];
+      return (entity && entity[this.networkAtlas]) || [];
+    },
+
+    // Bar width (% of this row set's own max Dice) + significance flag, same
+    // "largest value = full bar" convention as barWidth()/clusterBarWidth().
+    sortedNetworkRows(rows) {
+      const sorted = rows.slice().sort((a, b) => b.dice - a.dice);
+      const max = Math.max(...sorted.map(r => r.dice), 1e-6);
+      return sorted.map(r => ({
+        ...r,
+        widthPct: (r.dice / max) * 96,
+        sig: r.p_value <= 0.05
+      }));
     },
 
     // Scale bar width for the cluster topic bars, same convention as barWidth() above.

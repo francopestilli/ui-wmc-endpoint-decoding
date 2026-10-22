@@ -720,3 +720,11 @@ table.matrix-table td.cell:hover { outline: 2px solid var(--accent); }
 .panel-cluster-header { flex-wrap: wrap; }
 .header-tract-list { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; margin-top: 8px; }
 .header-tract-list .tract-tag { color: var(--text); }
+
+/* ─── Network Correspondence (bar chart, same markup as topic bars) ──── */
+.network-atlas-select {
+  background: var(--surface2); color: var(--text); border: 1px solid var(--border);
+  border-radius: 6px; padding: 4px 8px; font-size: 12px; margin-left: auto;
+}
+.network-corr-empty { color: var(--text-muted); font-size: 12px; padding: 24px 0; text-align: center; }
+.topic-bar-label.network-sig { color: var(--text); font-weight: 700; }

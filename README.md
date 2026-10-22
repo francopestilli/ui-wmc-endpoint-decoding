@@ -25,6 +25,8 @@ White matter tracts were defined from [Bullock et al., 2022](https://academic.ou
 
 **Topic details** — click any topic bar to see the topic's full 40-term list with LDA weights and term type (Functional / Anatomical / Clinical / Non-specific). The *Functional terms only* switch (on by default, matching the gradec figures) also drives the radar labels and word clouds.
 
+**Network Correspondence** — in both Cluster View and Tract View, a bar chart (same style as the topic bars) of Dice overlap between the selection's endpoint map and each network in the selected atlas, via the [Network Correspondence Toolbox](https://github.com/rubykong/cbig_network_correspondence) ([Kong et al., 2025](https://www.nature.com/articles/s41467-025-58176-9)). An atlas dropdown switches between the six reference atlases used in the paper — `EG17`, `TY7`, `AS200Y17`, `MG360J12`, `XS268_8`, `EG286_12` (the toolbox supports ~20 more, see below). Bold/starred networks are spin-test significant (p < 0.05).
+
 Charts use the cluster's color throughout (a tract takes its cluster's color).
 
 ## How clustering works
@@ -47,6 +49,7 @@ testdata/
     ├── matrix_RAS.csv         ← RAS endpoint decoded on its own (same layout)
     ├── matrix_LPI.csv         ← LPI endpoint decoded on its own (same layout)
     ├── cluster-matrix.csv     ← clusters × topics, each cluster's combined map decoded
+    ├── network-correspondence.csv  ← tracts/clusters × network atlases, Dice + p-value (see below)
     └── func/
         ├── {lh|rh}.{tract}.{LPI|RAS}.func.gii   ← per-tract endpoint maps (fsaverage)
         └── manifest.json      ← which hemisphere/orientation files exist per tract
@@ -64,6 +67,28 @@ python3 scripts/export_topic_terms.py ../Kims-Revisions/data/decoding
 ```
 
 which reads gradec's `source-neuroquery_desc-lda_{features,frequencies,classification}.csv`.
+
+## Network Correspondence Toolbox
+
+`network-correspondence.csv` (one per threshold; columns `entity_type, entity_id, group, name, dice, p_value`) is computed offline by `scripts/compute_network_correspondence.py`, using [cbig_network_correspondence](https://github.com/rubykong/cbig_network_correspondence) ([Kong et al., 2025](https://www.nature.com/articles/s41467-025-58176-9)).
+
+The toolbox pins exact dependency versions (`numpy==1.26.4`, `matplotlib==3.9.0`, …) that conflict with the newer `numpy`/`matplotlib` the Kims-Revisions decoding notebook needs — **install it into its own environment**, not the notebook's:
+
+```bash
+conda create -n cbig_nc python=3.11
+/opt/anaconda3/envs/cbig_nc/bin/python3 -m pip install cbig_network_correspondence
+```
+
+Then, from this repo:
+
+```bash
+/opt/anaconda3/envs/cbig_nc/bin/python3 scripts/compute_network_correspondence.py            # all thresholds
+/opt/anaconda3/envs/cbig_nc/bin/python3 scripts/compute_network_correspondence.py thr-15      # one threshold
+```
+
+For each tract and each live-clustered cluster, this combines its endpoint map(s) (same max-overlap merge the 3D viewer uses), resamples to fsaverage6 by taking the **first 40,962 vertices** of our native fsaverage (164k) data — fsaverage6 is an exact vertex subset of fsaverage via icosahedral subdivision, verified directly against both meshes' coordinates, so no resampling tool (e.g. Connectome Workbench) is needed — and runs `network_correspondence()` against each atlas in the script's `ATLASES` list: `EG17` (Gordon 17), `TY7` (Yeo 7), `AS200Y17` (Schaefer 200, Yeo 17), `MG360J12` (Glasser 360, 12 networks), `XS268_8` (Shen 268, 8 networks), `EG286_12` (Gordon 286, 12 networks) — the reference atlases used in the paper.
+
+To add another of the toolbox's ~25 atlases (Schaefer, Gordon, Cole-Anticevic, Power, …) to the website's dropdown, add its code to `ATLASES` in the script and re-run — no other code changes needed, the dropdown is populated from whatever atlas codes are actually present in the CSV.
 
 ## Adding a threshold
 
@@ -100,6 +125,7 @@ The site is static, so it can be served from GitHub Pages (Settings → Pages �
 | `charts.js` | radar chart + word cloud |
 | `surf3d.js` | GIFTI parsing + three.js cortical surface rendering |
 | `scripts/export_topic_terms.py` | builds `assets/decoding/topic-terms.json` |
+| `scripts/compute_network_correspondence.py` | builds `network-correspondence.csv` (run in the separate `cbig_nc` environment — see above) |
 
 Dependencies are loaded from a CDN, with no build step: [Vue 2](https://v2.vuejs.org/), [PapaParse](https://www.papaparse.com/), [pako](https://github.com/nodeca/pako), [three.js](https://threejs.org/).
 

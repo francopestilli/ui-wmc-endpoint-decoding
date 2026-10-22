@@ -4,6 +4,10 @@ Interactive visualization of white matter tract endpoint decoding — how the co
 
 Everything is drawn live in the browser from CSV / GIFTI data: no pre-rendered figures are needed.
 
+**Live:** [kimberlylray.github.io/ui-wmc-endpoint-decoding](https://kimberlylray.github.io/ui-wmc-endpoint-decoding/) — a landing page (`index.html`) with the project description, preprint link and citation, linking to the actual tool (`explorer.html`).
+
+White matter tracts were defined from the [Yeo-network-aligned atlas](https://academic.oup.com/cercor/article/32/20/4524/6528900) (*Cerebral Cortex*, 2022) using its [brainlife.io app](https://brainlife.io/app/5cc73ef44ed9df00317f6288).
+
 ## What it shows
 
 **Cluster View**
@@ -30,7 +34,7 @@ Charts use the cluster's color throughout (a tract takes its cluster's color).
 1. keep tracts with no missing topic scores (`matrix.dropna(axis=0)`)
 2. distance = 1 − Pearson r between tracts across topics
 3. complete-linkage hierarchical clustering
-4. cut the tree at distance `cut` (default 1.0; set per threshold in `index.html`)
+4. cut the tree at distance `cut` (default 1.0; set per threshold in `explorer.html`)
 
 Cluster numbers follow scipy's `fcluster` exactly, so cluster *N* matches row *N* of `cluster-matrix.csv`. Tracts with missing scores are shown as "Not clustered".
 
@@ -64,7 +68,7 @@ which reads gradec's `source-neuroquery_desc-lda_{features,frequencies,classific
 ## Adding a threshold
 
 1. Add a folder under `testdata/` with the files above.
-2. Add an entry to `config.thresholds` in `index.html`:
+2. Add an entry to `config.thresholds` in `explorer.html`:
 
    ```js
    '0.25 (6 clusters)': { folder: 'thr-25', surfBase: 'testdata/thr-25/func', cut: 1.0 }
@@ -79,17 +83,18 @@ npm install
 npm start          # serves the folder, e.g. http://localhost:3000
 ```
 
-Any static file server works (e.g. `python3 -m http.server 3000`); opening `index.html` directly from disk will not, because the browser blocks loading the data files.
+Any static file server works (e.g. `python3 -m http.server 3000`); opening the HTML files directly from disk will not, because the browser blocks loading the data files. Once served, open `index.html` for the landing page or go straight to `explorer.html` for the tool.
 
 ## Hosting
 
-The site is static, so it can be served from GitHub Pages (Settings → Pages → deploy from `main`, folder `/`). For brainlife.io, point `dataBase` in `index.html` at the brainlife output location.
+The site is static, so it can be served from GitHub Pages (Settings → Pages → deploy from `main`, folder `/`) — `index.html` becomes the landing page visitors land on. For brainlife.io, point `dataBase` in `explorer.html` at the brainlife output location.
 
 ## Code
 
 | File | Role |
 |---|---|
-| `index.html` | page shell + configuration (thresholds, data paths) |
+| `index.html` | landing page: description, preprint link/citation, and live previews (reusing `cluster.js`/`surf3d.js` against real data) of each view |
+| `explorer.html` | the tool itself: page shell + configuration (thresholds, data paths) |
 | `viewer.js` | main Vue component (views, data loading, interaction) |
 | `cluster.js` | hierarchical clustering + dendrogram |
 | `charts.js` | radar chart + word cloud |
@@ -102,3 +107,9 @@ Dependencies are loaded from a CDN, with no build step: [Vue 2](https://v2.vuejs
 
 Developed by Kim Ray, University of Texas at Austin (Pestilli Lab).
 Supported by the [brainlife.io](https://brainlife.io) platform.
+
+This tool accompanies:
+
+> Human white matter tracts aligned with canonical functional brain networks
+> Kimberly L. Ray, Sohmee Kim, Karen Herrera, Suna Guo, Daniela Reyes, Julio A. Peraza, Anna Bostoganashvili, Gabriele Amorosino, Angela R. Laird, Franco Pestilli
+> doi: [10.64898/2026.05.20.726546](https://doi.org/10.64898/2026.05.20.726546)

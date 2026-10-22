@@ -317,7 +317,7 @@ Vue.component('wmc-viewer', {
                       class="topic-bar-fill"
                       :style="{
                         width: clusterBarWidth(item.value) + '%',
-                        background: item.value >= 0 ? '#4f8ef7' : '#e07b7b'
+                        background: item.value >= 0 ? '#e07b7b' : '#4f8ef7'
                       }"
                     ></div>
                     <span class="topic-bar-val">{{ item.value.toFixed(3) }}</span>
@@ -436,7 +436,7 @@ ${SURF_PANEL_TEMPLATE}
                       <div class="topic-bar-label" :title="'Click to see all terms in ' + item.topic">{{ topicLabel(item.topic) }}</div>
                       <div class="topic-bar-track">
                         <div class="topic-bar-fill"
-                             :style="{ width: sideBarWidth(item.value) + '%', background: item.value >= 0 ? '#4f8ef7' : '#e07b7b' }"></div>
+                             :style="{ width: sideBarWidth(item.value) + '%', background: item.value >= 0 ? '#e07b7b' : '#4f8ef7' }"></div>
                         <span class="topic-bar-val">{{ item.value.toFixed(3) }}</span>
                       </div>
                     </div>

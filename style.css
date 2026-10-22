@@ -713,7 +713,10 @@ table.matrix-table td.cell:hover { outline: 2px solid var(--accent); }
 /* keep r values legible when they sit on top of a long bar */
 .topic-bar-val { color: var(--text); text-shadow: 0 0 3px rgba(0, 0, 0, .9), 0 0 1px rgba(0, 0, 0, .9); }
 
-/* Cluster View: member tracts listed in the header, next to the cluster label */
+/* Cluster View: member tracts listed in the header, on their own line below
+   the cluster label. flex-basis: 100% forces it onto a new row within the
+   header's flex-wrap without affecting .panel-cluster-header's other use
+   (Tract View's header, which has no .header-tract-list). */
 .panel-cluster-header { flex-wrap: wrap; }
-.header-tract-list { display: flex; flex-wrap: wrap; gap: 6px; margin-left: 12px; flex: 1 1 300px; }
+.header-tract-list { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; margin-top: 8px; }
 .header-tract-list .tract-tag { color: var(--text); }

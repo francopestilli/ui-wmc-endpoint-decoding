@@ -287,7 +287,8 @@ Vue.component('wmc-viewer', {
               <span class="panel-cluster-dot" :style="{ background: activeCluster.color }"></span>
               <strong>Cluster {{ selectedCluster }}</strong>
               <span class="text-muted" style="margin-left:8px;" v-if="activeCluster.tracts.length">{{ activeCluster.tracts.length }} {{ activeCluster.tracts.length === 1 ? 'tract' : 'tracts' }}</span>
-              <!-- member tracts, right next to the cluster label (click → Tract View) -->
+              <span class="text-muted" v-else>Cluster membership couldn't be computed for this threshold.</span>
+              <!-- member tracts, just below the cluster label (click → Tract View) -->
               <div class="header-tract-list" v-if="activeCluster.tracts.length">
                 <span
                   class="tract-tag"
@@ -298,7 +299,6 @@ Vue.component('wmc-viewer', {
                   title="Click to explore this tract"
                 >{{ t }}</span>
               </div>
-              <span class="text-muted" v-else>Cluster membership couldn't be computed for this threshold.</span>
             </div>
 
             ${CLUSTER_SURF_TEMPLATE}

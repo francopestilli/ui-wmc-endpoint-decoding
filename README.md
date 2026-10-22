@@ -6,7 +6,7 @@ Everything is drawn live in the browser from CSV / GIFTI data: no pre-rendered f
 
 **Live:** [kimberlylray.github.io/ui-wmc-endpoint-decoding](https://kimberlylray.github.io/ui-wmc-endpoint-decoding/) — a landing page (`index.html`) with the project description, preprint link and citation, linking to the actual tool (`explorer.html`).
 
-White matter tracts were defined from the [Yeo-network-aligned atlas](https://academic.oup.com/cercor/article/32/20/4524/6528900) (*Cerebral Cortex*, 2022) using its [brainlife.io app](https://brainlife.io/app/5cc73ef44ed9df00317f6288).
+White matter tracts were defined from [Bullock et al., 2022](https://academic.oup.com/cercor/article/32/20/4524/6528900) ("A taxonomy of the brain's white matter: twenty-one major tracts for the 21st century", *Cerebral Cortex*) using its [brainlife.io app](https://brainlife.io/app/5cc73ef44ed9df00317f6288).
 
 ## What it shows
 

@@ -3,62 +3,377 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WMC Tract Endpoint Decoding</title>
+  <title>White Matter Tract Explorer</title>
   <link rel="icon" href="data:," />
-  <!-- Libraries: Vue 2 (UI), PapaParse (CSV), pako (gzip'd GIFTI data), three.js (3D surfaces) -->
+  <style>
+    :root {
+      --bg:          #0f1117;
+      --surface:     #1a1d27;
+      --surface2:    #22263a;
+      --border:      #2e3250;
+      --accent:      #4f8ef7;
+      --accent2:     #7c5cbf;
+      --text:        #e4e6f0;
+      --text-muted:  #9aa0bd;
+      --radius:      8px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(ellipse 900px 500px at 50% -10%, rgba(79,142,247,0.16), transparent),
+        var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      padding: 48px 24px;
+    }
+    .hero {
+      max-width: 880px;
+      margin: 0 auto;
+      text-align: center;
+    }
+    .hero h1 {
+      font-size: clamp(28px, 4vw, 40px);
+      font-weight: 700;
+      margin: 0 0 18px;
+      background: linear-gradient(90deg, var(--text), var(--accent) 65%, var(--accent2));
+      -webkit-background-clip: text;
+      background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    .hero p {
+      font-size: 17px;
+      line-height: 1.6;
+      color: var(--text-muted);
+      margin: 0 0 32px;
+    }
+    .cta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 14px;
+      justify-content: center;
+      margin-bottom: 40px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 22px;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform .12s ease, box-shadow .12s ease, background .12s ease;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0b0d12;
+    }
+    .btn-primary:hover { background: #6ba0ff; transform: translateY(-1px); box-shadow: 0 6px 20px rgba(79,142,247,0.35); }
+    .btn-secondary {
+      background: var(--surface);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--surface2); transform: translateY(-1px); }
+
+    /* ── Preview cards ─────────────────────────────────────────── */
+    .preview {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 14px;
+      text-align: left;
+    }
+    .preview-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+    .preview-card .dot {
+      width: 10px; height: 10px; border-radius: 50%;
+      display: inline-block; margin-right: 8px;
+      flex-shrink: 0;
+    }
+    .preview-card h3 {
+      font-size: 13px;
+      font-weight: 600;
+      margin: 0 0 10px;
+      display: flex;
+      align-items: center;
+    }
+    .preview-card p {
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--text-muted);
+      margin: 10px 0 0;
+    }
+    .preview-visual {
+      position: relative;
+      border-radius: 6px;
+      overflow: hidden;
+      background: #0a0b14;
+      height: 190px;
+    }
+    .preview-visual::after {
+      /* fade hints that the real view keeps going */
+      content: '';
+      position: absolute; left: 0; right: 0; bottom: 0; height: 38px;
+      background: linear-gradient(to bottom, transparent, #0a0b14);
+      pointer-events: none;
+    }
+    .preview-loading {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-muted); font-size: 11px;
+    }
+    .spinner {
+      width: 16px; height: 16px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Dendrogram preview (same classes tract-dendrogram's template expects) */
+    .dendro-svg { display: block; width: 100%; height: auto; }
+    .dendro-svg .dendro-hit { stroke: transparent; stroke-width: 9; pointer-events: none; }
+    .dendro-svg .dendro-cut { stroke: var(--text-muted); stroke-width: 1; stroke-dasharray: 3 3; }
+    .dendro-svg .dendro-leaf { font-size: 10px; }
+    .dendro-svg .dendro-leaf.dim { opacity: 0.4; }
+    .dendro-svg .dendro-axis line { stroke: var(--text-muted); }
+    .dendro-svg .dendro-axis text { fill: var(--text-muted); font-size: 9px; }
+
+    /* 3D endpoint map preview */
+    .preview-visual canvas { width: 100%; height: 100%; display: block; }
+
+    /* Matrix preview */
+    .matrix-preview-table { border-collapse: collapse; font-size: 9px; width: 100%; }
+    .matrix-preview-table th, .matrix-preview-table td { padding: 0; }
+    .matrix-preview-table th.row-label {
+      text-align: left; padding: 1px 6px 1px 8px; color: var(--text-muted);
+      font-weight: 400; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px;
+    }
+    .matrix-preview-table td.cell { width: 15px; height: 15px; }
+
+    /* ── Footer citation ────────────────────────────────────────── */
+    .cite {
+      margin: 56px auto 0;
+      max-width: 700px;
+      text-align: left;
+      border-top: 1px solid var(--border);
+      padding-top: 24px;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+    .cite .cite-title { color: var(--text); font-weight: 600; margin-bottom: 6px; }
+    .cite .cite-authors { margin-bottom: 4px; }
+    .cite .cite-doi a { color: var(--accent); text-decoration: none; }
+    .cite .cite-doi a:hover { text-decoration: underline; }
+    .cite .cite-meta { margin-top: 14px; font-size: 11.5px; }
+    .cite .cite-meta div { margin-bottom: 3px; }
+
+    @media (max-width: 760px) {
+      .preview { grid-template-columns: 1fr; }
+      .cite { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+  <div class="hero">
+    <h1>White Matter Tract Explorer</h1>
+    <p>
+      Explore white matter tracts and their clusters through interactive maps linking
+      cortical endpoints to meta-analytic functional associations.
+    </p>
+    <div class="cta-row">
+      <a class="btn btn-primary" href="explorer.html">Launch the Explorer →</a>
+      <a class="btn btn-secondary" href="https://doi.org/10.64898/2026.05.20.726546" target="_blank" rel="noopener">Read the preprint</a>
+    </div>
+
+    <div class="preview">
+      <div class="preview-card">
+        <h3><span class="dot" style="background:#e07b7b"></span>Cluster View</h3>
+        <div class="preview-visual">
+          <!-- Vue mounts by REPLACING the el, so dendroPreview must be a child
+               of .preview-visual, not .preview-visual itself, or the fixed-
+               height/fade wrapper gets swapped out along with it. -->
+          <div id="dendroPreview">
+            <div class="preview-loading"><div class="spinner"></div></div>
+          </div>
+        </div>
+        <p>Start here. Tracts grouped by shared functional profile, with a live dendrogram like this one.</p>
+      </div>
+      <div class="preview-card">
+        <h3><span class="dot" style="background:#5aaccc"></span>Tract View</h3>
+        <div class="preview-visual">
+          <canvas id="arcCanvas"></canvas>
+          <div class="preview-loading" id="arcLoading"><div class="spinner"></div></div>
+        </div>
+        <p>One tract at a time — here, the Arcuate Fasciculus's own cortical endpoint map.</p>
+      </div>
+      <div class="preview-card">
+        <h3><span class="dot" style="background:#9b75d4"></span>Full Matrix</h3>
+        <div class="preview-visual" id="matrixPreview">
+          <div class="preview-loading"><div class="spinner"></div></div>
+        </div>
+        <p>Every tract × every topic at once — a slice of the full array shown above.</p>
+      </div>
+    </div>
+
+    <div class="cite">
+      <div class="cite-title">This tool accompanies:</div>
+      <div class="cite-authors">
+        Human white matter tracts aligned with canonical functional brain networks<br />
+        Kimberly L. Ray, Sohmee Kim, Karen Herrera, Suna Guo, Daniela Reyes, Julio A. Peraza,
+        Anna Bostoganashvili, Gabriele Amorosino, Angela R. Laird, Franco Pestilli
+      </div>
+      <div class="cite-doi">doi: <a href="https://doi.org/10.64898/2026.05.20.726546" target="_blank" rel="noopener">10.64898/2026.05.20.726546</a></div>
+      <div class="cite-meta">
+        <div><strong>Competing Interest Statement:</strong> The authors have declared no competing interest.</div>
+        <div><strong>Funder Information:</strong> Wellcome Trust, 226486/Z/22/Z · National Institute of Neurological Disorders and Stroke, UM1NS132207, U24NS140384 · Amazon Web Services, Open Data Sponsorship Program</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Live previews reuse the explorer's own rendering code (cluster.js, surf3d.js)
+       against the default threshold's real data, rather than mocked-up images. -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.7.14/vue.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pako/2.1.0/pako.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <link rel="stylesheet" href="style.css" />
-</head>
-<body>
-<div id="app" v-cloak>
-  <div v-if="error" class="error-msg">{{ error }}</div>
-  <wmc-viewer v-else :config="config"></wmc-viewer>
-</div>
+  <script src="surf3d.js"></script>
+  <script src="cluster.js"></script>
+  <script>
+    const PREVIEW_BASE = 'testdata/thr-15';
+    const PREVIEW_CLUSTER_COLORS = ['#e07b7b', '#d4a843', '#6bbf6b', '#5aaccc', '#9b75d4', '#d47a5a', '#3fb8a8'];
 
-<script src="surf3d.js"></script>   <!-- GIFTI parsing + 3D cortical endpoint maps -->
-<script src="charts.js"></script>   <!-- radar chart + word cloud -->
-<script src="cluster.js"></script>  <!-- hierarchical clustering + dendrogram -->
-<script src="viewer.js"></script>   <!-- main viewer component -->
-<script>
-  new Vue({
-    el: '#app',
-    data: {
-      error: null,
-      config: {
-        // Folder holding one subfolder per threshold, each with:
-        //   matrix.csv                    tract × topic decoding (joint LPI + RAS)
-        //   matrix_RAS.csv / matrix_LPI.csv  each endpoint decoded on its own
-        //   cluster-matrix.csv            cluster × topic decoding
-        dataBase: 'testdata',
-
-        // fsaverage midthickness mesh (+ cortex mask + thickness) that the
-        // func.gii endpoint maps were made on, so vertices line up exactly.
-        surfMeshBase: 'assets/surf/mesh',
-
-        // Full LDA term list per topic (from scripts/export_topic_terms.py).
-        topicTermsUrl: 'assets/decoding/topic-terms.json',
-
-        // One entry per threshold in the dropdown (label → settings):
-        //   folder     subfolder of dataBase with this threshold's CSVs
-        //   surfBase   folder of per-tract endpoint maps, named
-        //              "{lh|rh}.{tract}.{LPI|RAS}.func.gii" (omit to hide the 3D maps)
-        //   cut        dendrogram distance cut for the live clustering (default 1.0)
-        //   noClusters true hides the Cluster tab
-        thresholds: {
-          '0.05 (9 clusters)': { folder: 'thr-05', surfBase: 'testdata/thr-05/func' },
-          '0.10 (8 clusters)': { folder: 'thr-10', surfBase: 'testdata/thr-10/func' },
-          '0.15 (7 clusters)': { folder: 'thr-15', surfBase: 'testdata/thr-15/func' },
-          // Same 0.15 decoding and endpoint maps, dendrogram cut higher to give 5 clusters
-          '0.15 (5 clusters)': { folder: 'thr-15_5clusters', surfBase: 'testdata/thr-15/func', cut: 1.2657 },
-          '0.20 (7 clusters)': { folder: 'thr-20', surfBase: 'testdata/thr-20/func' }
-        },
-        defaultThreshold: '0.15 (7 clusters)'
+    // Same diverging blue→white→red scale as the explorer's matrix tab.
+    function previewScoreColor(v, vmin, vmax) {
+      if (v === null || isNaN(v)) return '#2a2d40';
+      const mid = (vmin + vmax) / 2;
+      let t, r, g, b;
+      if (v < mid) {
+        t = (v - vmin) / (mid - vmin);
+        r = Math.round(59 + t * (240 - 59)); g = Math.round(108 + t * (240 - 108)); b = Math.round(196 + t * (240 - 196));
+      } else {
+        t = (v - mid) / (vmax - mid);
+        r = Math.round(240 + t * (196 - 240)); g = Math.round(240 - t * (240 - 59)); b = Math.round(240 - t * (240 - 59));
       }
+      return `rgb(${r},${g},${b})`;
     }
-  });
-</script>
+
+    Papa.parse(`${PREVIEW_BASE}/matrix.csv`, {
+      download: true, header: true, skipEmptyLines: true,
+      complete(results) {
+        const fields = results.meta.fields || [];
+        const tractCol = fields[0], topicCols = fields.slice(1);
+        const tractOrder = [], matrix = {};
+        let allValues = [];
+        results.data.forEach(row => {
+          const t = row[tractCol];
+          if (!t) return;
+          tractOrder.push(t);
+          matrix[t] = {};
+          topicCols.forEach(k => {
+            const raw = row[k];
+            const v = (raw === 'NaN' || raw === '' || raw === undefined) ? null : parseFloat(raw);
+            matrix[t][k] = v;
+            if (v !== null && !isNaN(v)) allValues.push(v);
+          });
+        });
+        allValues.sort((a, b) => a - b);
+        const vmin = allValues[Math.floor(allValues.length * 0.05)] ?? -0.5;
+        const vmax = allValues[Math.ceil(allValues.length * 0.95)] ?? 0.5;
+
+        // ── Cluster View preview: live dendrogram ──
+        const clustering = computeClustering(matrix, tractOrder, topicCols, 1.0);
+        if (clustering) {
+          new Vue({
+            el: '#dendroPreview',
+            data: { clustering: Object.freeze(clustering), colors: PREVIEW_CLUSTER_COLORS },
+            template: `<tract-dendrogram :clustering="clustering" :colors="colors"></tract-dendrogram>`
+          });
+        }
+
+        // ── Full Matrix preview: a corner of the real array ──
+        const previewTracts = tractOrder.slice(0, 10);
+        const previewTopics = topicCols.slice(0, 16);
+        const table = document.createElement('table');
+        table.className = 'matrix-preview-table';
+        previewTracts.forEach(t => {
+          const tr = document.createElement('tr');
+          const th = document.createElement('th');
+          th.className = 'row-label'; th.textContent = t; th.title = t;
+          tr.appendChild(th);
+          previewTopics.forEach(k => {
+            const td = document.createElement('td');
+            td.className = 'cell';
+            td.style.background = previewScoreColor(matrix[t][k], vmin, vmax);
+            td.title = `${t} — ${k}`;
+            tr.appendChild(td);
+          });
+          table.appendChild(tr);
+        });
+        const matrixHost = document.getElementById('matrixPreview');
+        matrixHost.innerHTML = '';
+        matrixHost.appendChild(table);
+      },
+      error() {
+        document.getElementById('dendroPreview').innerHTML = '';
+        document.getElementById('matrixPreview').innerHTML = '';
+      }
+    });
+
+    // ── Tract View preview: live 3D Arcuate Fasciculus endpoint map ──
+    // Both hemispheres (leftArc + rightArc), LPI+RAS combined via per-vertex
+    // max — the same merge the explorer uses for a cluster's combined map.
+    (function renderArcPreview() {
+      const canvas = document.getElementById('arcCanvas');
+      const loading = document.getElementById('arcLoading');
+      const meshBase = 'assets/surf/mesh';
+      const surfBase = `${PREVIEW_BASE}/func`;
+      const parts = [['lh', 'leftArc'], ['rh', 'rightArc']];
+
+      let scene;
+      try {
+        scene = new SurfaceScene(canvas);
+      } catch (e) {
+        loading.textContent = '3D preview unavailable in this browser';
+        return;
+      }
+
+      Promise.all(parts.map(([hemi, tract]) =>
+        Promise.all([
+          loadHemiMesh(meshBase, hemi),
+          Promise.all(['RAS', 'LPI'].map(o =>
+            fetchGifti(`${surfBase}/${hemi}.${tract}.${o}.func.gii`).catch(() => null)
+          ))
+        ]).then(([mesh, perOrient]) => {
+          let overlay = null;
+          perOrient.forEach(arrays => {
+            if (!arrays || !arrays.length) return;
+            const d = (arrays.find(a => a.dim0 === mesh.nVerts) || arrays[0]).values;
+            if (!overlay) { overlay = Float32Array.from(d); return; }
+            for (let i = 0; i < overlay.length; i++) if (d[i] > overlay[i]) overlay[i] = d[i];
+          });
+          return overlay ? { hemi, mesh, overlay } : null;
+        })
+      )).then(results => {
+        const found = results.filter(Boolean);
+        if (!found.length) { loading.textContent = 'No preview data available'; return; }
+        let max = 0;
+        found.forEach(f => { for (let i = 0; i < f.overlay.length; i++) if (f.overlay[i] > max) max = f.overlay[i]; });
+        found.forEach(f => scene.setHemiMesh(f.hemi, buildColoredGeometry(f.mesh, f.overlay, max)));
+        scene.setDefaultView(found.map(f => f.hemi));
+        loading.remove();
+      }).catch(() => { loading.textContent = '3D preview unavailable'; });
+    })();
+  </script>
 </body>
 </html>

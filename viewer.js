@@ -120,8 +120,7 @@ const SURF_PANEL_TEMPLATE = `
               </div>
               <div class="text-muted" style="font-size:12px;margin:2px 0 20px;">
                 Drag to rotate, scroll to zoom. Both orientation conventions are shown side-by-side
-                for QA — they don't always agree, and which one is anatomically correct for this
-                dataset hasn't been confirmed yet.
+                as defined in our dataset.
               </div>
             </template>
 
@@ -162,6 +161,7 @@ Vue.component('wmc-viewer', {
 
     <!-- ── Header ─────────────────────────────────────────── -->
     <header class="wmc-header">
+      <a href="index.html" class="wmc-home-link" title="Back to overview">←</a>
       <div class="wmc-title">WMC Tract <span>Endpoint Decoding</span></div>
       <div class="header-spacer"></div>
       <div class="control-group">
@@ -275,6 +275,10 @@ Vue.component('wmc-viewer', {
 
         <!-- ── CLUSTER VIEW TAB ──────────────────────────── -->
         <div class="tab-panel" v-else-if="tab==='cluster'">
+          <p class="view-intro">
+            Tracts grouped by how similar their functional profile is. Pick a cluster from the sidebar
+            (or a branch of the dendrogram) to see its combined endpoint map and top cognitive topics.
+          </p>
           <div v-if="!selectedCluster" class="empty-state">
             Select a cluster from the sidebar (or switch to "Clusters" mode) to explore its decoding profile.
           </div>
@@ -366,6 +370,13 @@ Vue.component('wmc-viewer', {
 
         <!-- ── TRACT VIEW TAB ────────────────────────────── -->
         <div class="tab-panel" v-else-if="tab==='tract'">
+          <p class="view-intro">
+            One tract at a time: its 3D cortical endpoint map and decoding scores, with each
+            endpoint (RAS/LPI) broken out alongside the combined result. Search or pick a tract from the sidebar.<br />
+            White matter tracts were defined from
+            <a href="https://academic.oup.com/cercor/article/32/20/4524/6528900" target="_blank" rel="noopener">this atlas</a>
+            using the <a href="https://brainlife.io/app/5cc73ef44ed9df00317f6288" target="_blank" rel="noopener">brainlife.io app</a>.
+          </p>
           <div v-if="!selectedTract" class="empty-state">
             Select a tract from the sidebar (switch to "Tracts" mode) to explore its decoding profile.
           </div>
@@ -383,6 +394,10 @@ Vue.component('wmc-viewer', {
 ${SURF_PANEL_TEMPLATE}
             <!-- Decoding: joint (LPI + RAS) vs. each endpoint on its own, side by side -->
             <div class="tract-section-title">Top Cognitive Topics — joint vs. each endpoint</div>
+            <p class="view-intro">
+              Explore the strongest topics associated with this tract's endpoints. Click a topic to
+              examine its full list of terms.
+            </p>
             <div class="topics-row">
               <div class="endpoint-cols">
                 <div class="endpoint-col" v-for="src in endpointSources" :key="src.key">
@@ -406,6 +421,10 @@ ${SURF_PANEL_TEMPLATE}
             </div>
 
             <!-- Radar + word cloud for each decoding, same column order -->
+            <p class="view-intro" v-if="topicTerms && Object.keys(topicTerms).length">
+              Ray et al., 2026 included only functional terms — uncheck "Functional terms only" below
+              to see the full list of all terms for each topic.
+            </p>
             <label class="chart-term-toggle" v-if="topicTerms && Object.keys(topicTerms).length">
               <input type="checkbox" v-model="topicFunctionalOnly" />
               Functional terms only <span class="text-muted">— radar labels &amp; word cloud use each topic's full list of functional terms</span>
@@ -448,6 +467,11 @@ ${SURF_PANEL_TEMPLATE}
 
         <!-- ── MATRIX TAB ────────────────────────────────── -->
         <div class="tab-panel" v-else-if="tab==='matrix'">
+          <p class="view-intro">
+            Every tract's decoding score for every topic, at once. Hover a cell for the exact value,
+            or click a row to open that tract in Tract View.<br />
+            Rows without values correspond to tracts whose endpoints didn't survive the selected threshold.
+          </p>
           <div class="matrix-legend">
             <span>{{ vmin.toFixed(2) }}</span>
             <div class="legend-grad"></div>

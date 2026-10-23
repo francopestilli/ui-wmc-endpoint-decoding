@@ -135,39 +135,31 @@ const TOPIC_PANEL_TEMPLATE = `
 const BRAIN_TEMPLATE = `
             <div class="brain-ws" v-if="surfBase && surfMeshBase">
               <div class="brain-toolbar">
-                <div class="seg" role="group" aria-label="Map">
-                  <span class="seg-label">Map</span>
-                  <template v-if="tab === 'cluster'">
-                    <button :class="{ active: brain.mode === 'both' }" @click="setBrainMode('both')" title="Union of all member tracts' endpoints (per-vertex max)">Combined</button>
-                    <button :class="{ active: brain.mode === 'bytract' }" @click="setBrainMode('bytract')" title="Each vertex coloured by the member tract whose endpoints dominate there">By tract</button>
-                  </template>
-                  <template v-else>
-                    <button :class="{ active: brain.mode === 'both' }" @click="setBrainMode('both')" title="RAS and LPI endpoint maps merged (per-vertex max)">Both endpoints</button>
-                    <button :class="{ active: brain.mode === 'RAS' }" @click="setBrainMode('RAS')">RAS</button>
-                    <button :class="{ active: brain.mode === 'LPI' }" @click="setBrainMode('LPI')">LPI</button>
-                  </template>
-                </div>
-                <div class="seg" role="group" aria-label="Hemisphere">
-                  <span class="seg-label">Hemisphere</span>
-                  <button :class="{ active: brain.hemi === 'both' }" @click="setBrainHemi('both')">Both</button>
-                  <button :class="{ active: brain.hemi === 'lh' }" @click="setBrainHemi('lh')">Left</button>
-                  <button :class="{ active: brain.hemi === 'rh' }" @click="setBrainHemi('rh')">Right</button>
-                </div>
-                <div class="seg" role="group" aria-label="View">
-                  <span class="seg-label">View</span>
-                  <button v-for="v in brainViews" :key="v.id" :class="{ active: brain.view === v.id }" @click="setBrainView(v.id)" :title="v.hint">{{ v.label }}</button>
-                </div>
-                <div class="seg" role="group" aria-label="Networks">
-                  <span class="seg-label">Networks</span>
-                  <button :class="{ active: !brain.atlas }" @click="setAtlas(false)" title="Plain cortex">Off</button>
-                  <button :class="{ active: brain.atlas }" @click="setAtlas(true)" :title="'Paint the ' + atlasLabel(networkAtlas) + ' networks on the cortex'">{{ brain.atlas ? 'On' : 'Show' }}</button>
-                  <select class="select mini" v-if="brain.atlas" v-model="networkAtlas" aria-label="Atlas">
-                    <option v-for="a in networkAtlases" :key="a" :value="a">{{ atlasLabel(a) }}</option>
+                <label class="ctl">
+                  <span class="ctl-label">Show</span>
+                  <select class="select" :value="brain.mode" @change="setBrainMode($event.target.value)" aria-label="What to draw on the cortex">
+                    <template v-if="tab === 'cluster'">
+                      <option value="both">Cluster endpoints (combined)</option>
+                      <option value="bytract">Cluster endpoints, coloured by tract</option>
+                    </template>
+                    <template v-else>
+                      <option value="both">Both endpoints</option>
+                      <option value="RAS">RAS endpoint only</option>
+                      <option value="LPI">LPI endpoint only</option>
+                    </template>
+                    <option value="none" v-if="brain.atlas">Networks only (no endpoints)</option>
                   </select>
-                </div>
-                <label class="seg toggle" v-if="brain.atlas" title="Draw the endpoint map on top of the networks">
-                  <input type="checkbox" v-model="brain.overlay" @change="queueSurfRefresh()" /> <span>{{ tab === 'cluster' ? 'Cluster endpoints on top' : 'Tract endpoints on top' }}</span>
                 </label>
+                <label class="ctl">
+                  <span class="ctl-label">View</span>
+                  <select class="select" :value="brain.view" @change="setBrainView($event.target.value)" aria-label="Camera view">
+                    <option v-for="v in brainViews" :key="v.id" :value="v.id">{{ v.label }}</option>
+                  </select>
+                </label>
+                <button class="btn small" :class="{ primary: brain.atlas }" @click="setAtlas(!brain.atlas)"
+                        :title="brain.atlas ? 'Hide the network atlas' : 'Paint the ' + atlasLabel(networkAtlas) + ' networks on the cortex'">
+                  {{ brain.atlas ? 'Networks on' : 'Networks' }}
+                </button>
                 <button class="icon-btn" @click="resetBrain()" title="Reset rotation and zoom" aria-label="Reset view">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg>
                 </button>
@@ -179,11 +171,11 @@ const BRAIN_TEMPLATE = `
                 <div class="surf-overlay surf-empty" v-if="brain.status === 'nomembers'">Cluster membership couldn't be computed for this threshold</div>
                 <div class="surf-overlay surf-empty" v-if="brain.status === 'nowebgl'">3D view unavailable (WebGL failed to start in this browser)</div>
                 <div class="brain-caption">
-                  <span v-if="tab === 'cluster'">Cluster {{ selectedCluster }} · {{ brain.mode === 'bytract' ? 'coloured by tract' : 'combined LPI + RAS' }}</span>
-                  <span v-else>{{ tractLabel(selectedTract) }} · {{ brain.mode === 'both' ? 'LPI + RAS' : brain.mode + ' endpoint' }}</span>
+                  <span v-if="tab === 'cluster'">Cluster {{ selectedCluster }} · {{ brain.mode === 'bytract' ? 'coloured by tract' : brain.mode === 'none' ? 'networks only' : 'combined LPI + RAS' }}</span>
+                  <span v-else>{{ tractLabel(selectedTract) }} · {{ brain.mode === 'both' ? 'LPI + RAS' : brain.mode === 'none' ? 'networks only' : brain.mode + ' endpoint' }}</span>
                   <span class="hint">drag to rotate · scroll to zoom</span>
                 </div>
-                <div class="brain-legend" v-if="brain.status === 'ready' && !(brain.atlas && !brain.overlay)" :class="{ raised: brain.atlas && atlasInfo }">
+                <div class="brain-legend" v-if="brain.status === 'ready' && brain.mode !== 'none'" :class="{ raised: brain.atlas && atlasInfo }">
                   <template v-if="brain.mode === 'bytract'">
                     <span v-for="t in brainTints" :key="t.tract" class="tint" :class="{ active: hoverTract === t.tract }"
                           @click="selectTractAndSwitch(t.tract)" :title="t.tract + ' — open in Tract view'">
@@ -197,7 +189,7 @@ const BRAIN_TEMPLATE = `
                 </div>
               </div>
                 <div class="brain-legend atlas-legend" v-if="brain.atlas && atlasInfo">
-                  <span class="lg-label">{{ atlasInfo.title }}</span>
+                  <span class="lg-label">{{ atlasInfo.title }} · <a href="#" @click.prevent="goToSection('networks')">change atlas</a></span>
                   <span v-for="(nm, i) in atlasInfo.names" :key="nm" class="tint" :class="{ active: focusNetwork === nm, hot: hoverNetwork === nm, muted: focusNetwork && focusNetwork !== nm }"
                         @click="toggleNetwork(nm)" @mouseenter="hoverNetwork = nm" @mouseleave="hoverNetwork = null" :title="'Click to isolate ' + nm">
                     <i :style="{ background: atlasInfo.colors[i] }"></i>{{ nm }}
@@ -286,9 +278,9 @@ const TOPICS_HEAD_TEMPLATE = `
 const NETWORK_TOOLS_TEMPLATE = `
               <div class="net-tools">
                 <button class="btn small" :class="{ primary: brain.atlas }" @click="setAtlas(!brain.atlas)">
-                  {{ brain.atlas ? 'Networks shown on the brain' : 'Show networks on the brain' }}
+                  {{ brain.atlas ? 'Shown on the brain' : 'Show on the brain' }}
                 </button>
-                <span class="net-hint" v-if="brain.atlas">Hover a network to find it on the cortex; click to isolate it.<template v-if="focusNetwork"> <a href="#" @click.prevent="focusNetwork = null; queueSurfRefresh()">Show all networks</a>.</template></span>
+                <span class="net-hint" v-if="brain.atlas">Hover a row to find it on the cortex, click to isolate.<template v-if="focusNetwork"> <a href="#" @click.prevent="focusNetwork = null; queueSurfRefresh()">Show all</a>.</template></span>
               </div>
 `;
 
@@ -939,14 +931,17 @@ Vue.component('wmc-viewer', {
     brainLegendCss() {
       return this.tab === 'cluster' ? this.clusterLegendCss : 'linear-gradient(to right, #000, #c00, #fc0, #fff)';
     },
+    // Camera presets; the two medial views hide the other hemisphere.
     brainViews() {
       return [
-        { id: 'lateral-left',  label: 'L lat',   hint: 'Left lateral' },
-        { id: 'lateral-right', label: 'R lat',   hint: 'Right lateral' },
-        { id: 'dorsal',        label: 'Top',     hint: 'Dorsal' },
-        { id: 'ventral',       label: 'Bottom',  hint: 'Ventral' },
-        { id: 'anterior',      label: 'Front',   hint: 'Anterior' },
-        { id: 'posterior',     label: 'Back',    hint: 'Posterior' }
+        { id: 'dorsal',        label: 'Top',           cam: 'dorsal',        hemi: 'both' },
+        { id: 'ventral',       label: 'Bottom',        cam: 'ventral',       hemi: 'both' },
+        { id: 'anterior',      label: 'Front',         cam: 'anterior',      hemi: 'both' },
+        { id: 'posterior',     label: 'Back',          cam: 'posterior',     hemi: 'both' },
+        { id: 'lateral-left',  label: 'Left, lateral', cam: 'lateral-left',  hemi: 'both' },
+        { id: 'lateral-right', label: 'Right, lateral',cam: 'lateral-right', hemi: 'both' },
+        { id: 'medial-left',   label: 'Left, medial',  cam: 'lateral-right', hemi: 'lh' },
+        { id: 'medial-right',  label: 'Right, medial', cam: 'lateral-left',  hemi: 'rh' }
       ];
     },
     // Tracts whose endpoint maps the 3D panel should show right now.
@@ -1009,7 +1004,7 @@ Vue.component('wmc-viewer', {
         { target: 'subtabs', title: 'One panel at a time',
           body: 'The brain stays on the left; everything else is stacked on the right. This bar jumps to a section and shows where you are: the <b>overview</b> (top topics, best networks), all <b>topics</b> decoded from the map, the <b>radar & word cloud</b> figures from the paper, and <b>network</b> overlap.' },
         { target: 'map', title: 'Cortical endpoint map', prep: () => { this.goToSection('map'); },
-          body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. Switch endpoint (RAS / LPI), colour a cluster by its member tracts, show one hemisphere, or jump to a view preset. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
+          body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. <b>Show</b> picks what is drawn (combined endpoints, one endpoint, a cluster coloured by tract), <b>View</b> jumps to a camera angle, and <b>Networks</b> paints the atlas chosen in the Networks section underneath. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
         { target: 'glance', title: 'At a glance',
           body: 'Beside the map: the five strongest cognitive topics and the three best-matching brain networks for this selection, and a plain-language note on what the selection is. Click a topic here to open it directly.' },
         { target: 'topics', title: 'Decoded cognitive topics', prep: () => { this.goToSection('topics'); },
@@ -1691,7 +1686,7 @@ Vue.component('wmc-viewer', {
 
     // Toolbar actions
     setBrainMode(mode) { this.brain.mode = mode; this.queueSurfRefresh(); },
-    setAtlas(on) { this.brain.atlas = !!on; if (!on) { this.focusNetwork = null; } this.queueSurfRefresh(); },
+    setAtlas(on) { this.brain.atlas = !!on; if (!on) { this.focusNetwork = null; if (this.brain.mode === 'none') this.brain.mode = 'both'; } this.queueSurfRefresh(); },
     toggleNetwork(name) {
       this.focusNetwork = this.focusNetwork === name ? null : name;
       if (!this.brain.atlas) this.brain.atlas = true;
@@ -1716,15 +1711,17 @@ Vue.component('wmc-viewer', {
       }
       return this._atlasCache.get(code);
     },
-    setBrainHemi(h) {
-      this.brain.hemi = h;
-      if (this._surf) { this._surf.setHemiVisible('lh', h !== 'rh'); this._surf.setHemiVisible('rh', h !== 'lh'); }
-      // Looking at one hemisphere: default to its lateral side.
-      if (h === 'lh' && this.brain.view === 'dorsal') this.setBrainView('lateral-left');
-      if (h === 'rh' && this.brain.view === 'dorsal') this.setBrainView('lateral-right');
+    setBrainView(id) {
+      const v = this.brainViews.find(x => x.id === id) || this.brainViews[0];
+      this.brain.view = v.id;
+      this.brain.hemi = v.hemi;
+      if (this._surf) {
+        this._surf.setHemiVisible('lh', v.hemi !== 'rh');
+        this._surf.setHemiVisible('rh', v.hemi !== 'lh');
+        this._surf.setView(v.cam);
+      }
     },
-    setBrainView(v) { this.brain.view = v; if (this._surf) this._surf.setView(v); },
-    resetBrain() { if (this._surf) { this._surf.resetZoom(); this._surf.setView(this.brain.view); } },
+    resetBrain() { if (this._surf) { this._surf.resetZoom(); this.setBrainView(this.brain.view); } },
 
     // Cached GIFTI fetches: toggling map / hemisphere / threshold never
     // re-downloads a file the page already parsed.
@@ -1759,6 +1756,7 @@ Vue.component('wmc-viewer', {
       const isCluster = this.tab === 'cluster';
       const mode = this.brain.mode;
       const orients = mode === 'RAS' || mode === 'LPI' ? [mode] : ['RAS', 'LPI'];
+      if (mode === 'none' && !this.brain.atlas) this.brain.mode = 'both';
       const tracts = this.surfTracts.slice();
       const surfBase = this.surfBase, meshBase = this.surfMeshBase;
       const stops = isCluster ? clusterRamp(this.activeCluster.color) : null;
@@ -1777,7 +1775,7 @@ Vue.component('wmc-viewer', {
       this.brainTints = mode === 'bytract' ? tracts.map((tract, i) => ({ tract, color: tintHex[i] })) : [];
       const wantAtlas = this.brain.atlas && this.networkAtlas;
       const atlasP = wantAtlas ? this.loadAtlas(this.networkAtlas) : Promise.resolve(null);
-      const showOverlay = !this.brain.atlas || this.brain.overlay;
+      const showOverlay = this.brain.mode !== 'none';
 
       Promise.all([atlasP, loadSurfManifest(surfBase)]).then(([atlas, manifest]) => {
         if (requestId !== this._surfRequestId) return [];
@@ -1834,7 +1832,7 @@ Vue.component('wmc-viewer', {
         });
         // If the chosen hemisphere has no map for this selection, fall back to both.
         const haveHemis = found.map(f => f.hemi);
-        if (this.brain.hemi !== 'both' && !haveHemis.includes(this.brain.hemi)) this.brain.hemi = 'both';
+        if (this.brain.hemi !== 'both' && !haveHemis.includes(this.brain.hemi)) this.setBrainView('dorsal');
         scene.setHemiVisible('lh', this.brain.hemi !== 'rh');
         scene.setHemiVisible('rh', this.brain.hemi !== 'lh');
         // First load of a selection: pick a sensible camera; later reloads keep the user's view.
@@ -1842,7 +1840,7 @@ Vue.component('wmc-viewer', {
           this._brainKey = this.tab + '|' + tracts.join(',');
           const hemis = found.map(f => f.hemi);
           const v = hemis.length === 2 ? 'dorsal' : hemis[0] === 'lh' ? 'lateral-left' : 'lateral-right';
-          this.brain.view = v; scene.resetZoom(); scene.setView(v);
+          scene.resetZoom(); this.setBrainView(v);
         }
         this.brain.max = max;
         this.brain.status = 'ready';

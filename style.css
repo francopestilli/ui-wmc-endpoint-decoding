@@ -484,6 +484,9 @@ section.subpanel:last-child { border-bottom: 0; }
 /* Brain workspace */
 .brain-ws { max-width: 1100px; }
 .brain-toolbar { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; margin-bottom: 10px; }
+.ctl { display: inline-flex; align-items: center; gap: 8px; }
+.ctl-label { font-family: var(--font-mono); font-size: .62rem; letter-spacing: .12em; text-transform: uppercase; color: var(--soft); }
+.brain-legend .lg-label a { color: var(--blue-light); text-transform: none; letter-spacing: 0; }
 .seg.toggle { padding: 5px 10px; gap: 7px; color: var(--muted); font-size: .8rem; cursor: pointer; }
 .seg.toggle input { accent-color: var(--accent); margin: 0; }
 .select.mini { padding: 4px 24px 4px 8px; font-size: .78rem; margin-left: 4px; max-width: 220px; }

@@ -118,9 +118,10 @@ The site is static, so it can be served from GitHub Pages (Settings → Pages �
 
 | File | Role |
 |---|---|
-| `index.html` | landing page: description, preprint link/citation, and live previews (reusing `cluster.js`/`surf3d.js` against real data) of each view |
+| `index.html` | landing page in the Pestilli Lab site style: hero, the three-step workflow (cluster → tract → topic) with live previews reusing `cluster.js`/`surf3d.js`, feature list, paper and citation |
 | `explorer.html` | the tool itself: page shell + configuration (thresholds, data paths) |
-| `viewer.js` | main Vue component (views, data loading, interaction) |
+| `style.css` | the one stylesheet for both pages; design tokens (Geist type, navy/yellow palette) follow [pestillilab.github.io](https://pestillilab.github.io) |
+| `viewer.js` | main Vue component: lab-style header, the Cluster › Tract › Topic stepper, the clusters→tracts sidebar tree with search and collapsible dendrogram, the three views, the first-visit guide and the help dialog |
 | `cluster.js` | hierarchical clustering + dendrogram |
 | `charts.js` | radar chart + word cloud |
 | `surf3d.js` | GIFTI parsing + three.js cortical surface rendering |

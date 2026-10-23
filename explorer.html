@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>WMC Tract Endpoint Decoding</title>
-  <link rel="icon" href="data:," />
+  <title>Explorer — White Matter Tract Explorer</title>
+  <meta name="description" content="Interactive explorer of white matter tract endpoint decoding: clusters, tracts, cognitive topics and network correspondence." />
+  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
   <!-- Libraries: Vue 2 (UI), PapaParse (CSV), pako (gzip'd GIFTI data), three.js (3D surfaces) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.7.14/vue.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
@@ -12,7 +13,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
-<body>
+<body class="explorer">
 <div id="app" v-cloak>
   <div v-if="error" class="error-msg">{{ error }}</div>
   <wmc-viewer v-else :config="config"></wmc-viewer>
@@ -46,7 +47,7 @@
         //   surfBase   folder of per-tract endpoint maps, named
         //              "{lh|rh}.{tract}.{LPI|RAS}.func.gii" (omit to hide the 3D maps)
         //   cut        dendrogram distance cut for the live clustering (default 1.0)
-        //   noClusters true hides the Cluster tab
+        //   noClusters true hides the Cluster step
         thresholds: {
           '0.05 (9 clusters)': { folder: 'thr-05', surfBase: 'testdata/thr-05/func' },
           '0.10 (8 clusters)': { folder: 'thr-10', surfBase: 'testdata/thr-10/func' },

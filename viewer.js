@@ -207,7 +207,7 @@ const GUIDE_TEMPLATE = `
 
 // "At a glance" strip shown under the selection header in both views.
 const GLANCE_TEMPLATE = `
-            <div class="glance" data-tour="glance">
+            <aside class="glance" data-tour="glance">
               <div class="glance-card">
                 <div class="glance-title">Top topics <span>joint decoding · r</span></div>
                 <div class="glance-topics" v-if="glanceTopics.length">
@@ -240,7 +240,7 @@ const GLANCE_TEMPLATE = `
                 <p v-else>One tract. Its two endpoint maps (RAS / LPI) are decoded jointly and separately against 104 cognitive topics, and compared with canonical brain networks.</p>
                 <button class="glance-more" @click="startTour()">Take the 2-minute tour →</button>
               </div>
-            </div>
+            </aside>
 `;
 
 // Topics panel header: chart / list switch + what-it-shows line.
@@ -349,67 +349,51 @@ Vue.component('wmc-viewer', {
         <div class="sidebar-head">
           <label class="search">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
-            <input v-model="tractSearch" placeholder="Find a tract (e.g. arcuate, SLF, left…)" aria-label="Search tracts" />
+            <input v-model="tractSearch" placeholder="Find a tract (e.g. arcuate, SLF, left…)" aria-label="Search tracts" @keydown.enter="openFirstMatch" />
             <button v-if="tractSearch" @click="tractSearch = ''" aria-label="Clear search">×</button>
           </label>
         </div>
         <div class="sidebar-scroll" data-tour="sidebar">
-          <div class="sidebar-section"><span>{{ tractSearch ? 'Matching tracts' : (clustersEnabled ? 'Clusters & tracts' : 'Tracts') }}</span></div>
-          <div class="tree">
-            <div class="tree-cluster" v-for="group in sidebarGroups" :key="group.id">
-              <button
-                v-if="group.id !== 'all'"
-                class="tree-cluster-head"
-                :class="{ active: tab==='cluster' && selectedCluster === group.id }"
-                @click="onClusterRowClick(group.id)"
-                :title="'Cluster ' + group.id + ' — click to view; click the arrow to list its tracts'"
-              >
-                <span class="chev" :class="{ open: isOpen(group.id) }" @click.stop="toggleOpen(group.id)" role="button" aria-label="Expand cluster">▶</span>
-                <span class="cluster-dot" :style="{ background: group.color }"></span>
-                <span class="name">{{ group.label }}</span>
-                <span class="count">{{ group.tracts.length }}</span>
-              </button>
-              <div class="tree-tracts" v-show="group.id === 'all' || isOpen(group.id) || tractSearch">
-                <button
-                  v-for="t in group.tracts"
-                  :key="t"
-                  class="tract-btn"
-                  :class="{ active: tab==='tract' && selectedTract === t }"
-                  :style="selectedTract === t ? { color: tractClusterColor(t) } : null"
-                  @click="selectTractAndSwitch(t); sidebarOpen = false"
-                  :title="t"
-                >
-                  <span class="cluster-dot" :style="{ background: tractClusterColor(t) }"></span>
-                  <span class="tract-btn-label" :style="{ color: selectedTract === t ? 'var(--ink)' : null }">{{ tractLabel(t) }}</span>
-                  <span class="side">{{ tractSide(t) }}</span>
-                </button>
-              </div>
-            </div>
-            <div class="tree-empty" v-if="tractSearch && !sidebarGroups.length">No tract matches “{{ tractSearch }}”.</div>
+          <div class="cluster-chips" v-if="clustersEnabled && clusters.length">
+            <button v-for="c in clusters" :key="c.id" class="chip" :class="{ active: tab === 'cluster' && selectedCluster === c.id }"
+                    @click="selectCluster(c.id)" :title="c.tracts.length + ' tracts — click to view cluster ' + c.id">
+              <i :style="{ background: c.color }"></i>{{ c.id }}<small>{{ c.tracts.length }}</small>
+            </button>
           </div>
-          <template v-if="clustering && clustersEnabled && !tractSearch">
-            <div class="sidebar-section">
-              <span>Dendrogram</span>
-              <button class="link" @click="dendroOpen = !dendroOpen">{{ dendroOpen ? 'Hide' : 'Show' }}</button>
+          <div class="sidebar-section">
+            <span>{{ tractSearch ? matchCount + ' of ' + tractOrder.length + ' tracts match' : 'Cluster tree · ' + tractOrder.length + ' tracts' }}</span>
+          </div>
+          <div class="dendro-wrap" v-if="clustering">
+            <tract-dendrogram
+              :clustering="clustering"
+              :colors="clusterColors"
+              :selected-cluster="selectedCluster"
+              :selected-tract="selectedTract"
+              :labels="tractLabels"
+              :highlight="tractSearch.trim() ? filteredTracts : null"
+              :row-height="17"
+              :width="330"
+              :tree-width="104"
+              @select-cluster="selectCluster"
+              @select-tract="selectTractAndSwitch"
+            ></tract-dendrogram>
+            <div class="dendro-note">
+              Tracts grouped by how similar their decoding profiles are (complete linkage on 1 − r, cut at {{ clustering.cut }}).
+              Click a branch to view its cluster, a name to open that tract.
+              <template v-if="clustering.excluded.length">
+                Not clustered (missing scores): {{ clustering.excluded.map(tractLabel).join(', ') }}.
+              </template>
             </div>
-            <div class="dendro-wrap" v-show="dendroOpen">
-              <tract-dendrogram
-                :clustering="clustering"
-                :colors="clusterColors"
-                :selected-cluster="selectedCluster"
-                :selected-tract="selectedTract"
-                @select-cluster="selectCluster"
-                @select-tract="selectTractAndSwitch"
-              ></tract-dendrogram>
-              <div class="dendro-note">
-                Complete linkage on 1 − r, cut at {{ clustering.cut }}. Click a branch for its cluster, a name for the tract.
-                <template v-if="clustering.excluded.length">
-                  Not clustered (missing scores): {{ clustering.excluded.join(', ') }}.
-                </template>
-              </div>
+          </div>
+          <div class="tree" v-else>
+            <div class="tree-tracts" style="padding-left:4px">
+              <button v-for="t in filteredTracts" :key="t" class="tract-btn" :class="{ active: tab==='tract' && selectedTract === t }"
+                      @click="selectTractAndSwitch(t); sidebarOpen = false" :title="t">
+                <span class="cluster-dot" :style="{ background: tractClusterColor(t) }"></span>
+                <span class="tract-btn-label">{{ tractLabel(t) }}</span><span class="side">{{ tractSide(t) }}</span>
+              </button>
             </div>
-          </template>
-
+          </div>
         </div>
       </nav>
 
@@ -443,12 +427,12 @@ Vue.component('wmc-viewer', {
               </div>
             </div>
 
-            ${GLANCE_TEMPLATE}
             ${SUBTABS_TEMPLATE}
 
-            <!-- Endpoint map (v-show keeps the WebGL canvas mounted) -->
-            <div class="subpanel" v-show="subTab==='map'" data-tour="map">
-              ${BRAIN_TEMPLATE}
+            <!-- Overview: endpoint map + at-a-glance (v-show keeps the WebGL canvas mounted) -->
+            <div class="subpanel overview" v-show="subTab==='map'">
+              <div data-tour="map">${BRAIN_TEMPLATE}</div>
+              ${GLANCE_TEMPLATE}
             </div>
 
             <!-- Topics -->
@@ -560,11 +544,12 @@ Vue.component('wmc-viewer', {
               </div>
             </div>
 
-            ${GLANCE_TEMPLATE}
             ${SUBTABS_TEMPLATE}
 
-            <div class="subpanel" v-show="subTab==='map'" data-tour="map">
-              ${BRAIN_TEMPLATE}
+            <!-- Overview: endpoint map + at-a-glance (v-show keeps the WebGL canvas mounted) -->
+            <div class="subpanel overview" v-show="subTab==='map'">
+              <div data-tour="map">${BRAIN_TEMPLATE}</div>
+              ${GLANCE_TEMPLATE}
             </div>
 
             <!-- Decoding: joint (LPI + RAS) vs. each endpoint on its own -->
@@ -959,16 +944,16 @@ Vue.component('wmc-viewer', {
           body: 'Tract endpoints are defined by an endpoint-density cutoff. Each threshold has its own decoding and its own clustering solution; the label shows how many clusters it yields. The paper\'s default is 0.15.' },
         { target: 'stepper', title: 'Your path: Cluster › Tract › Topic',
           body: 'The explorer is a drill-down in three steps, and this bar always shows where you are. Click a step to go back to it. <b>Full matrix</b> on the right is the alternative: browse every tract and topic at once.' },
-        { target: 'sidebar', title: 'Clusters and their tracts', prep: () => { this.sidebarOpen = true; },
-          body: 'Clusters group tracts with similar functional profiles (hierarchical clustering on the decoding scores). Click a cluster to view it, use the arrow to list its tracts, or search a tract by name. The dendrogram below shows how the clusters were cut.' },
+        { target: 'sidebar', title: 'The cluster tree', prep: () => { this.sidebarOpen = true; },
+          body: 'Every tract as a leaf of the dendrogram, grouped by how similar their decoding profiles are. Click a coloured branch to view that cluster, a tract name to open it, the numbered chips to jump between clusters, or search by name (Enter opens the first match).' },
         { target: 'selection', title: 'What is selected', prep: () => { this.sidebarOpen = false; if (this.tab === 'matrix') this.showClusterView(); },
           body: 'The header names the selected cluster or tract, how it was defined, and its members. The tags are shortcuts: click a tract to go to step 2, or jump back to its cluster.' },
-        { target: 'glance', title: 'At a glance',
-          body: 'The summary strip: the five strongest cognitive topics and the three best-matching brain networks for this selection. Click a topic here to open it directly.' },
         { target: 'subtabs', title: 'One panel at a time',
-          body: 'Everything else lives in these sections: the <b>endpoint map</b>, the <b>topics</b> decoded from it, the <b>radar & word cloud</b> figures and <b>network</b> overlap. Each section says what it shows.' },
+          body: '<b>Overview</b> shows the endpoint map with the top topics and best networks beside it. The other sections go deeper: all <b>topics</b> decoded from the map, the <b>radar & word cloud</b> figures from the paper, and <b>network</b> overlap.' },
         { target: 'map', title: 'Cortical endpoint map', prep: () => { this.subTab = 'map'; },
           body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. Switch endpoint (RAS / LPI), colour a cluster by its member tracts, show one hemisphere, or jump to a view preset. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
+        { target: 'glance', title: 'At a glance',
+          body: 'Beside the map: the five strongest cognitive topics and the three best-matching brain networks for this selection, and a plain-language note on what the selection is. Click a topic here to open it directly.' },
         { target: 'topics', title: 'Decoded cognitive topics', prep: () => { this.subTab = 'topics'; },
           body: 'All 104 NeuroQuery topics at once: each dot is one topic, placed by its correlation (Pearson r) with the endpoint map. Orange is positive, blue negative, and the strongest are labelled. In the tract view the joint map and the two endpoints are lanes on one shared axis.' },
         { target: 'topic-panel', title: 'Step 3: inside a topic', prep: () => { this.subTab = 'topics'; const t = firstTopic(); if (t) this.selectedTopic = t; },
@@ -987,12 +972,20 @@ Vue.component('wmc-viewer', {
       const hasSurf = !!(this.surfBase && this.surfMeshBase);
       const hasScores = this.tab === 'cluster' ? !!this.clusterMatrix[this.selectedCluster] : !!this.matrix[this.selectedTract];
       return [
-        { id: 'map',      label: 'Endpoint map',       hint: 'Where the fibres end on the cortex',           available: hasSurf },
+        { id: 'map',      label: 'Overview',           hint: 'Endpoint map, top topics, best networks',      available: true },
         { id: 'topics',   label: 'Topics',             hint: 'Cognitive topics decoded from the map',        available: hasScores },
-        { id: 'charts',   label: 'Radar & word cloud', hint: "The paper's figures, live and clickable",      available: hasScores },
+        { id: 'charts',   label: 'Radar & word cloud', hint: "The paper's figures (Figs. 3–4), live",        available: hasScores },
         { id: 'networks', label: 'Networks',           hint: 'Overlap with canonical brain networks',        available: this.networkAtlases.length > 0 }
       ];
     },
+    // Readable label for every tract (for the dendrogram leaves).
+    tractLabels() {
+      const out = {};
+      this.tractOrder.forEach(t => { out[t] = tractLabel(t); });
+      return out;
+    },
+    matchCount() { return this.filteredTracts.length; },
+
     // Lanes for the topic profile chart: one row per decoding.
     profileLanes() {
       if (this.tab === 'cluster') {
@@ -1312,6 +1305,9 @@ Vue.component('wmc-viewer', {
         const el = this.$el.querySelector('#topics-section');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+    },
+    openFirstMatch() {
+      if (this.filteredTracts.length) { this.selectTractAndSwitch(this.filteredTracts[0]); this.tractSearch = ''; }
     },
     dismissGuide() { this.guideDismissed = true; writePref('wmc.guideDismissed', '1'); },
 

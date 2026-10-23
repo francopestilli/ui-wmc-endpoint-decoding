@@ -36,7 +36,7 @@
   --max: 1180px;
   --radius: 8px;
   --header-h: 64px;
-  --sidebar-w: 336px;
+  --sidebar-w: 372px;
 
   /* Legacy aliases used by the chart / dendrogram modules */
   --text: var(--ink);
@@ -208,7 +208,8 @@ p { margin: 0 0 1em; }
 .step-visual #dendroPreview, .step-visual #dendroPreview > div { height: 100%; }
 .step-visual .dendro-svg { display: block; width: 100%; height: 100%; padding: 6px 8px; }
 .step-visual .dendro-link { stroke-width: 1.6; }
-.step-visual .dendro-leaf { display: block; font-size: 8.5px; }
+.step-visual .dendro-leaf text { font-size: 8.5px; }
+.step-visual .dendro-leaf circle { r: 2; }
 .step-visual .dendro-axis, .step-visual .dendro-cut { display: none; }
 .step-visual .dendro-cut { stroke: var(--soft); stroke-width: 1; stroke-dasharray: 3 3; }
 .matrix-preview-table { border-collapse: collapse; font-size: 10px; width: 100%; }
@@ -331,18 +332,31 @@ body.explorer { height: 100vh; overflow: hidden; }
 .sidebar-section .link { background: none; border: 0; color: var(--blue-light); font-family: var(--font-mono); font-size: .64rem; letter-spacing: .1em; text-transform: uppercase; padding: 0; }
 .sidebar-section .link:hover { color: var(--accent); }
 
-/* Dendrogram (collapsible) */
-.dendro-wrap { padding: 4px 10px 8px; }
+/* Dendrogram — the primary navigation */
+.cluster-chips { display: flex; flex-wrap: wrap; gap: 6px; padding: 12px 14px 4px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 9px 4px 7px; border-radius: 999px; border: 1px solid var(--rule); background: var(--bg); color: var(--ink); font-size: .8rem; font-weight: 600; }
+.chip i { width: 9px; height: 9px; border-radius: 50%; }
+.chip small { font-family: var(--font-mono); font-weight: 400; font-size: .64rem; color: var(--soft); }
+.chip:hover { border-color: var(--rule-strong); }
+.chip.active { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent) inset; }
+.dendro-wrap { padding: 2px 8px 14px 6px; }
 .dendro-svg { display: block; width: 100%; height: auto; }
-.dendro-svg .dendro-hit { stroke: transparent; stroke-width: 9; cursor: pointer; pointer-events: stroke; }
-.dendro-svg .dendro-hit:hover { stroke: rgba(255,255,255,0.08); }
+.dendro-svg .dendro-link { stroke-linecap: round; }
+.dendro-svg .dendro-hit { stroke: transparent; stroke-width: 11; cursor: pointer; pointer-events: stroke; }
+.dendro-svg .dendro-hit:hover { stroke: rgba(226,236,246,0.08); }
 .dendro-svg .dendro-cut { stroke: var(--soft); stroke-width: 1; stroke-dasharray: 3 3; }
-.dendro-svg .dendro-leaf { font-size: 10px; cursor: pointer; font-family: var(--font-mono); }
-.dendro-svg .dendro-leaf:hover, .dendro-svg .dendro-leaf.active { font-weight: 700; text-decoration: underline; }
-.dendro-svg .dendro-leaf.dim { opacity: 0.35; }
+.dendro-svg .dendro-leaf { cursor: pointer; outline: none; }
+.dendro-svg .dendro-leaf text { font-size: 11.5px; font-family: var(--font-sans); }
+.dendro-svg .dendro-leaf-hit { fill: transparent; }
+.dendro-svg .dendro-leaf:hover .dendro-leaf-hit { fill: rgba(226,236,246,0.06); }
+.dendro-svg .dendro-leaf.active .dendro-leaf-hit { fill: var(--surface); stroke: var(--accent); stroke-width: 1; }
+.dendro-svg .dendro-leaf.active text { font-weight: 600; fill: var(--ink) !important; }
+.dendro-svg .dendro-leaf.match .dendro-leaf-hit { fill: rgba(63,210,255,0.10); }
+.dendro-svg .dendro-leaf.dim { opacity: 0.55; }
+.dendro-svg .dendro-leaf:focus-visible .dendro-leaf-hit { stroke: var(--accent); stroke-width: 1.5; }
 .dendro-svg .dendro-axis line { stroke: var(--soft); }
 .dendro-svg .dendro-axis text { fill: var(--soft); font-size: 9px; font-family: var(--font-mono); }
-.dendro-note { font-size: .74rem; color: var(--soft); margin: 6px 4px 0; line-height: 1.45; }
+.dendro-note { font-size: .76rem; color: var(--soft); margin: 8px 6px 0; line-height: 1.45; }
 
 /* Cluster accordion → tracts */
 .tree { padding: 0 8px 16px; }
@@ -401,8 +415,11 @@ body.explorer { height: 100vh; overflow: hidden; }
 .kv b { color: var(--ink); font-weight: 500; font-family: var(--font-mono); font-size: .8rem; }
 
 
-/* At a glance strip + sub-tabs */
-.glance { display: grid; grid-template-columns: 1.1fr 1fr 1fr; gap: 12px; margin-bottom: 14px; }
+/* Overview: brain workspace + at-a-glance column */
+.subpanel.overview { display: grid; grid-template-columns: minmax(0, 1.65fr) minmax(280px, 1fr); gap: 18px; align-items: start; }
+.subpanel.overview .brain-ws { max-width: none; }
+.glance { display: grid; grid-template-columns: 1fr; gap: 12px; }
+@media (max-width: 1150px) { .subpanel.overview { grid-template-columns: 1fr; } .glance { grid-template-columns: 1fr 1fr; } .glance-how { grid-column: 1 / -1; } }
 .glance-card { background: var(--bg-2); border: 1px solid var(--rule); border-radius: var(--radius); padding: 11px 14px 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .glance-title { font-family: var(--font-mono); font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: var(--soft); display: flex; justify-content: space-between; gap: 8px; }
 .glance-title span { text-transform: none; letter-spacing: 0; color: var(--soft); }
@@ -419,7 +436,6 @@ body.explorer { height: 100vh; overflow: hidden; }
 .glance-more { margin-top: auto; align-self: flex-start; background: none; border: 0; padding: 4px 0 0; color: var(--blue-light); font-size: .82rem; font-weight: 600; }
 .glance-more:hover { color: var(--accent); }
 .glance-how p { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.5; }
-@media (max-width: 1100px) { .glance { grid-template-columns: 1fr 1fr; } .glance-how { grid-column: 1 / -1; } }
 @media (max-width: 700px) { .glance { grid-template-columns: 1fr; } }
 
 .subtabs { display: flex; gap: 4px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; overflow-x: auto; }
@@ -461,7 +477,7 @@ body.explorer { height: 100vh; overflow: hidden; }
 .seg button { background: none; border: 0; color: var(--muted); font-size: .82rem; padding: 5px 10px; border-radius: 5px; white-space: nowrap; }
 .seg button:hover { color: var(--ink); background: rgba(226,236,246,0.05); }
 .seg button.active { color: var(--accent-ink); background: var(--accent); font-weight: 600; }
-.brain-stage { position: relative; aspect-ratio: 16 / 9; min-height: 360px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--rule);
+.brain-stage { position: relative; aspect-ratio: 4 / 3; min-height: 360px; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--rule);
   background: radial-gradient(ellipse at 50% 45%, #16263a, #0b1119 80%); }
 .brain-stage::before { content: ""; position: absolute; inset: 0; pointer-events: none; background-image: linear-gradient(rgba(63,210,255,.045) 1px, transparent 1px), linear-gradient(90deg, rgba(63,210,255,.045) 1px, transparent 1px); background-size: 32px 32px; mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%); -webkit-mask-image: radial-gradient(ellipse at center, #000 20%, transparent 75%); }
 .brain-stage canvas { position: relative; width: 100%; height: 100%; display: block; cursor: grab; }

@@ -157,6 +157,17 @@ const BRAIN_TEMPLATE = `
                   <span class="seg-label">View</span>
                   <button v-for="v in brainViews" :key="v.id" :class="{ active: brain.view === v.id }" @click="setBrainView(v.id)" :title="v.hint">{{ v.label }}</button>
                 </div>
+                <div class="seg" role="group" aria-label="Networks">
+                  <span class="seg-label">Networks</span>
+                  <button :class="{ active: !brain.atlas }" @click="setAtlas(false)" title="Plain cortex">Off</button>
+                  <button :class="{ active: brain.atlas }" @click="setAtlas(true)" :title="'Paint the ' + atlasLabel(networkAtlas) + ' networks on the cortex'">{{ brain.atlas ? 'On' : 'Show' }}</button>
+                  <select class="select mini" v-if="brain.atlas" v-model="networkAtlas" aria-label="Atlas">
+                    <option v-for="a in networkAtlases" :key="a" :value="a">{{ atlasLabel(a) }}</option>
+                  </select>
+                </div>
+                <label class="seg toggle" v-if="brain.atlas" title="Draw the endpoint map on top of the networks">
+                  <input type="checkbox" v-model="brain.overlay" @change="queueSurfRefresh()" /> <span>{{ tab === 'cluster' ? 'Cluster endpoints on top' : 'Tract endpoints on top' }}</span>
+                </label>
                 <button class="icon-btn" @click="resetBrain()" title="Reset rotation and zoom" aria-label="Reset view">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg>
                 </button>
@@ -172,7 +183,7 @@ const BRAIN_TEMPLATE = `
                   <span v-else>{{ tractLabel(selectedTract) }} · {{ brain.mode === 'both' ? 'LPI + RAS' : brain.mode + ' endpoint' }}</span>
                   <span class="hint">drag to rotate · scroll to zoom</span>
                 </div>
-                <div class="brain-legend" v-if="brain.status === 'ready'">
+                <div class="brain-legend" v-if="brain.status === 'ready' && !(brain.atlas && !brain.overlay)" :class="{ raised: brain.atlas && atlasInfo }">
                   <template v-if="brain.mode === 'bytract'">
                     <span v-for="t in brainTints" :key="t.tract" class="tint" :class="{ active: hoverTract === t.tract }"
                           @click="selectTractAndSwitch(t.tract)" :title="t.tract + ' — open in Tract view'">
@@ -181,10 +192,17 @@ const BRAIN_TEMPLATE = `
                   </template>
                   <template v-else>
                     <span class="lg-label">endpoint density</span>
-                    <span>0</span><div class="legend-grad" :style="{ background: brainLegendCss }"></div><span>{{ brain.max.toFixed(2) }}</span>
+                    <span>0</span><div class="legend-grad" :style="{ background: brain.atlas ? glowLegendCss : brainLegendCss }"></div><span>{{ brain.max.toFixed(2) }}</span>
                   </template>
                 </div>
               </div>
+                <div class="brain-legend atlas-legend" v-if="brain.atlas && atlasInfo">
+                  <span class="lg-label">{{ atlasInfo.title }}</span>
+                  <span v-for="(nm, i) in atlasInfo.names" :key="nm" class="tint" :class="{ active: focusNetwork === nm, hot: hoverNetwork === nm, muted: focusNetwork && focusNetwork !== nm }"
+                        @click="toggleNetwork(nm)" @mouseenter="hoverNetwork = nm" @mouseleave="hoverNetwork = null" :title="'Click to isolate ' + nm">
+                    <i :style="{ background: atlasInfo.colors[i] }"></i>{{ nm }}
+                  </span>
+                </div>
             </div>
 `;
 
@@ -262,6 +280,16 @@ const TOPICS_HEAD_TEMPLATE = `
               <p class="section-note" v-else>
                 The strongest topics as a ranked list with exact values<template v-if="tab === 'tract'">, for the joint map and each endpoint on its own</template>. Click a topic to open its term list.
               </p>
+`;
+
+// Networks panel: link the rows to the brain.
+const NETWORK_TOOLS_TEMPLATE = `
+              <div class="net-tools">
+                <button class="btn small" :class="{ primary: brain.atlas }" @click="setAtlas(!brain.atlas)">
+                  {{ brain.atlas ? 'Networks shown on the brain' : 'Show networks on the brain' }}
+                </button>
+                <span class="net-hint" v-if="brain.atlas">Hover a network to find it on the cortex; click to isolate it.<template v-if="focusNetwork"> <a href="#" @click.prevent="focusNetwork = null; queueSurfRefresh()">Show all networks</a>.</template></span>
+              </div>
 `;
 
 // Sub-tabs: one panel on screen at a time.
@@ -427,11 +455,12 @@ Vue.component('wmc-viewer', {
               </div>
             </div>
 
+            <!-- Workspace: the brain stays put on the left; the sections live on the right -->
+            <div class="workspace">
+              <div class="ws-brain" data-tour="map">${BRAIN_TEMPLATE}</div>
+              <div class="ws-panels">
             ${SUBTABS_TEMPLATE}
-
-            <!-- Overview: endpoint map + at-a-glance (v-show keeps the WebGL canvas mounted) -->
-            <div class="subpanel overview" v-show="subTab==='map'">
-              <div data-tour="map">${BRAIN_TEMPLATE}</div>
+            <div class="subpanel" v-if="subTab==='map'">
               ${GLANCE_TEMPLATE}
             </div>
 
@@ -501,16 +530,22 @@ Vue.component('wmc-viewer', {
                 atlas, from the <a href="https://www.nature.com/articles/s41467-025-58176-9" target="_blank" rel="noopener">Network Correspondence Toolbox</a>
                 (Kong et al., 2025). Bold / starred networks are spin-test significant (p &lt; 0.05); non-significant bars are faded.
               </p>
+              ${NETWORK_TOOLS_TEMPLATE}
               <div v-if="clusterNetworkRows.length" class="topic-bars">
-                <div v-for="item in clusterNetworkRows" :key="item.name" class="topic-bar-row">
+                <div v-for="item in clusterNetworkRows" :key="item.name" class="topic-bar-row clickable"
+                     :class="{ active: focusNetwork === item.name, hot: hoverNetwork === item.name }" role="button" tabindex="0"
+                     @click="toggleNetwork(item.name)" @keydown.enter.space.prevent="toggleNetwork(item.name)"
+                     @mouseenter="hoverNetwork = item.name" @mouseleave="hoverNetwork = null">
                   <div class="topic-bar-label" :class="{ 'network-sig': item.sig }" :title="item.name">{{ item.name }}</div>
                   <div class="topic-bar-track">
-                    <div class="topic-bar-fill" :style="{ width: item.widthPct + '%', background: activeCluster.color, opacity: item.sig ? 1 : 0.35 }"></div>
+                    <div class="topic-bar-fill" :style="{ width: item.widthPct + '%', background: networkColor(item.name) || activeCluster.color, opacity: item.sig ? 1 : 0.35 }"></div>
                     <span class="topic-bar-val">{{ item.dice.toFixed(3) }}{{ item.sig ? ' *' : '' }}</span>
                   </div>
                 </div>
               </div>
               <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this cluster.</div>
+            </div>
+              </div>
             </div>
 
           </div>
@@ -544,11 +579,12 @@ Vue.component('wmc-viewer', {
               </div>
             </div>
 
+            <!-- Workspace: the brain stays put on the left; the sections live on the right -->
+            <div class="workspace">
+              <div class="ws-brain" data-tour="map">${BRAIN_TEMPLATE}</div>
+              <div class="ws-panels">
             ${SUBTABS_TEMPLATE}
-
-            <!-- Overview: endpoint map + at-a-glance (v-show keeps the WebGL canvas mounted) -->
-            <div class="subpanel overview" v-show="subTab==='map'">
-              <div data-tour="map">${BRAIN_TEMPLATE}</div>
+            <div class="subpanel" v-if="subTab==='map'">
               ${GLANCE_TEMPLATE}
             </div>
 
@@ -627,16 +663,22 @@ Vue.component('wmc-viewer', {
                 selected atlas, from the <a href="https://www.nature.com/articles/s41467-025-58176-9" target="_blank" rel="noopener">Network Correspondence Toolbox</a>
                 (Kong et al., 2025). Bold / starred networks are spin-test significant (p &lt; 0.05); non-significant bars are faded.
               </p>
+              ${NETWORK_TOOLS_TEMPLATE}
               <div v-if="tractNetworkRows.length" class="topic-bars">
-                <div v-for="item in tractNetworkRows" :key="item.name" class="topic-bar-row">
+                <div v-for="item in tractNetworkRows" :key="item.name" class="topic-bar-row clickable"
+                     :class="{ active: focusNetwork === item.name, hot: hoverNetwork === item.name }" role="button" tabindex="0"
+                     @click="toggleNetwork(item.name)" @keydown.enter.space.prevent="toggleNetwork(item.name)"
+                     @mouseenter="hoverNetwork = item.name" @mouseleave="hoverNetwork = null">
                   <div class="topic-bar-label" :class="{ 'network-sig': item.sig }" :title="item.name">{{ item.name }}</div>
                   <div class="topic-bar-track">
-                    <div class="topic-bar-fill" :style="{ width: item.widthPct + '%', background: tractChartColor, opacity: item.sig ? 1 : 0.35 }"></div>
+                    <div class="topic-bar-fill" :style="{ width: item.widthPct + '%', background: networkColor(item.name) || tractChartColor, opacity: item.sig ? 1 : 0.35 }"></div>
                     <span class="topic-bar-val">{{ item.dice.toFixed(3) }}{{ item.sig ? ' *' : '' }}</span>
                   </div>
                 </div>
               </div>
               <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this tract.</div>
+            </div>
+              </div>
             </div>
 
           </div>
@@ -774,9 +816,13 @@ Vue.component('wmc-viewer', {
       vmax: 0.5,
       tooltip: { visible: false, x: 0, y: 0, tract: '', topic: '', value: null },
       // Brain workspace state. mode: 'both' | 'RAS' | 'LPI' | 'bytract'; status: 'idle' | 'loading' | 'ready' | 'empty' | 'nomembers' | 'nowebgl'
-      brain: { mode: 'both', hemi: 'both', view: 'dorsal', status: 'idle', max: 0 },
+      brain: { mode: 'both', hemi: 'both', view: 'dorsal', status: 'idle', max: 0, atlas: false, overlay: true },
       brainTints: [],            // [{ tract, color }] legend for "by tract" mode
       hoverTract: null,
+      // Network atlas painted on the cortex (assets/atlases/<code>.json, from scripts/export_network_atlases.py)
+      atlasInfo: null,           // { code, title, names, colors } of the atlas currently painted
+      hoverNetwork: null,        // network name under the pointer (legend / Networks rows)
+      focusNetwork: null,        // network isolated on the brain (click)
       // Network Correspondence Toolbox (Kong et al. 2025) results, from
       // network-correspondence.csv: { "tract|leftArc": { TY7: [{name,dice,p_value}], TY17: [...] } }
       networkCorrespondence: {},
@@ -878,6 +924,10 @@ Vue.component('wmc-viewer', {
     clusterLegendCss() {
       return rampGradientCss(clusterRamp(this.activeCluster ? this.activeCluster.color : null));
     },
+    glowLegendCss() {
+      const hex = this.tab === 'cluster' && this.activeCluster ? this.activeCluster.color : '#ffb454';
+      return 'linear-gradient(to right, ' + hex + ', #ffffff)';
+    },
     brainLegendCss() {
       return this.tab === 'cluster' ? this.clusterLegendCss : 'linear-gradient(to right, #000, #c00, #fc0, #fff)';
     },
@@ -961,7 +1011,7 @@ Vue.component('wmc-viewer', {
         { target: 'charts', title: 'Radar chart & word cloud', prep: () => { this.subTab = 'charts'; },
           body: 'The paper\'s figures, drawn live. Brighter means a stronger topic. Hover a bar or a word to see what it belongs to; click one to open that topic.' },
         { target: 'networks', title: 'Network correspondence', prep: () => { this.subTab = 'networks'; },
-          body: 'Dice overlap between the endpoint map and each network of a reference atlas (Yeo, Gordon, Schaefer, Glasser, Shen). Bold / starred networks survive a spin test (p < 0.05); the dropdown switches atlas.' },
+          body: 'Dice overlap between the endpoint map and each network of a reference atlas (Yeo, Gordon, Schaefer, Glasser, Shen). Bold / starred networks survive a spin test (p < 0.05). <b>Show networks on the brain</b> paints the atlas on the cortex with the endpoint map on top; hover a row to find that network, click to isolate it.' },
         { target: 'matrix-btn', title: 'Or browse everything', prep: () => { this.subTab = 'map'; },
           body: 'The <b>full matrix</b> shows all tracts against all topics as one heatmap, ordered like the dendrogram. Click any row to open that tract. That\'s the tour: the <b>?</b> button has a written version.' }
       ];
@@ -972,7 +1022,7 @@ Vue.component('wmc-viewer', {
       const hasSurf = !!(this.surfBase && this.surfMeshBase);
       const hasScores = this.tab === 'cluster' ? !!this.clusterMatrix[this.selectedCluster] : !!this.matrix[this.selectedTract];
       return [
-        { id: 'map',      label: 'Overview',           hint: 'Endpoint map, top topics, best networks',      available: true },
+        { id: 'map',      label: 'Overview',           hint: 'Top topics, best networks, what this is',      available: true },
         { id: 'topics',   label: 'Topics',             hint: 'Cognitive topics decoded from the map',        available: hasScores },
         { id: 'charts',   label: 'Radar & word cloud', hint: "The paper's figures (Figs. 3–4), live",        available: hasScores },
         { id: 'networks', label: 'Networks',           hint: 'Overlap with canonical brain networks',        available: this.networkAtlases.length > 0 }
@@ -1066,6 +1116,13 @@ Vue.component('wmc-viewer', {
   },
 
   watch: {
+    networkAtlas() { if (this.brain.atlas) { this.focusNetwork = null; this.queueSurfRefresh(); } },
+    hoverNetwork(v) {
+      if (!this.brain.atlas) return;
+      clearTimeout(this._hoverNetTimer);
+      // Hover previews the network by temporarily focusing it; a click pins it.
+      this._hoverNetTimer = setTimeout(() => { this._hoverFocus = v; this.queueSurfRefresh(); }, 80);
+    },
     // Any change to what's being viewed refreshes the 3D endpoint map.
     // queueSurfRefresh() dedups watchers that fire in the same tick
     // (e.g. selectTract() sets selectedTract and tab together).
@@ -1606,6 +1663,31 @@ Vue.component('wmc-viewer', {
 
     // Toolbar actions
     setBrainMode(mode) { this.brain.mode = mode; this.queueSurfRefresh(); },
+    setAtlas(on) { this.brain.atlas = !!on; if (!on) { this.focusNetwork = null; } this.queueSurfRefresh(); },
+    toggleNetwork(name) {
+      this.focusNetwork = this.focusNetwork === name ? null : name;
+      if (!this.brain.atlas) this.brain.atlas = true;
+      this.queueSurfRefresh();
+    },
+    networkColor(name) {
+      if (!this.atlasInfo || this.atlasInfo.code !== this.networkAtlas) return null;
+      const i = this.atlasInfo.names.indexOf(name);
+      return i >= 0 ? this.atlasInfo.colors[i] : null;
+    },
+    // assets/atlases/<code>.json, decoded once per atlas and kept.
+    loadAtlas(code) {
+      this._atlasCache = this._atlasCache || new Map();
+      if (!this._atlasCache.has(code)) {
+        const url = (this.config.atlasBase || 'assets/atlases') + '/' + code + '.json';
+        this._atlasCache.set(code, fetch(url).then(r => (r.ok ? r.json() : null)).then(d => {
+          if (!d) return null;
+          return { code: d.code, title: d.title, names: d.names, colors: d.colors,
+                   colors01: d.colors.map(h => { const v = parseInt(h.slice(1), 16); return [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255]; }),
+                   lh: decodeRle(d.lh, d.n), rh: decodeRle(d.rh, d.n) };
+        }).catch(() => null));
+      }
+      return this._atlasCache.get(code);
+    },
     setBrainHemi(h) {
       this.brain.hemi = h;
       if (this._surf) { this._surf.setHemiVisible('lh', h !== 'rh'); this._surf.setHemiVisible('rh', h !== 'lh'); }
@@ -1652,14 +1734,28 @@ Vue.component('wmc-viewer', {
       const tracts = this.surfTracts.slice();
       const surfBase = this.surfBase, meshBase = this.surfMeshBase;
       const stops = isCluster ? clusterRamp(this.activeCluster.color) : null;
-      const colorFn = stops ? (t => rampRgb01(stops, 0.25 + 0.75 * t)) : null;
+      let colorFn = stops ? (t => rampRgb01(stops, 0.25 + 0.75 * t)) : null;
+      if (this.brain.atlas) {
+        // On top of a coloured atlas the usual ramps vanish; use a bright glow
+        // from the selection's colour towards white instead.
+        const hex = isCluster ? this.activeCluster.color : '#ffb454';
+        const v = parseInt(hex.slice(1), 16), c = [((v >> 16) & 255) / 255, ((v >> 8) & 255) / 255, (v & 255) / 255];
+        colorFn = t => { const k = 0.3 + 0.7 * Math.min(1, t); return [c[0] + (1 - c[0]) * k, c[1] + (1 - c[1]) * k, c[2] + (1 - c[2]) * k]; };
+      }
       const tintHex = tracts.map((t, i) => TRACT_TINTS[i % TRACT_TINTS.length]);
       const tint01 = tintHex.map(h => { const n = parseInt(h.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; });
 
       this.brain.status = 'loading';
       this.brainTints = mode === 'bytract' ? tracts.map((tract, i) => ({ tract, color: tintHex[i] })) : [];
+      const wantAtlas = this.brain.atlas && this.networkAtlas;
+      const atlasP = wantAtlas ? this.loadAtlas(this.networkAtlas) : Promise.resolve(null);
+      const showOverlay = !this.brain.atlas || this.brain.overlay;
 
-      loadSurfManifest(surfBase).then(manifest => Promise.all(['lh', 'rh'].map(hemi => {
+      Promise.all([atlasP, loadSurfManifest(surfBase)]).then(([atlas, manifest]) => {
+        if (requestId !== this._surfRequestId) return [];
+        this.atlasInfo = atlas ? { code: atlas.code, title: atlas.title, names: atlas.names, colors: atlas.colors } : null;
+        this._atlas = atlas;
+        return Promise.all(['lh', 'rh'].map(hemi => {
         const wanted = [];   // [tractIndex, orientation]
         tracts.forEach((t, ti) => orients.forEach(o => {
           if (!manifest || (manifest[t] && manifest[t][hemi] && manifest[t][hemi].includes(o))) wanted.push([ti, o]);
@@ -1681,16 +1777,23 @@ Vue.component('wmc-viewer', {
           });
           return any ? { hemi, mesh, perTract } : null;
         });
-      }))).then(results => {
+      })); }).then(results => {
         if (requestId !== this._surfRequestId) return;   // a newer request superseded this one
+        const atlas = this._atlas;
+        const focusName = this.focusNetwork || this._hoverFocus;
+        const focusIdx = atlas && focusName ? atlas.names.indexOf(focusName) + 1 : 0;
+        const baseFor = (hemi, mesh) => atlas ? buildAtlasBase(mesh, atlas[hemi], atlas.colors01, focusIdx || null, null) : null;
         const found = results.filter(Boolean);
         if (!found.length) { scene.clearHemi('lh'); scene.clearHemi('rh'); this.brain.status = 'empty'; return; }
         let max = 0;
         found.forEach(f => f.perTract.forEach(ov => { if (ov) for (let i = 0; i < ov.length; i++) if (ov[i] > max) max = ov[i]; }));
         ['lh', 'rh'].forEach(h => { if (!found.some(f => f.hemi === h)) scene.clearHemi(h); });
         found.forEach(f => {
-          if (mode === 'bytract') {
-            scene.setHemiMesh(f.hemi, buildTintedGeometry(f.mesh, f.perTract, tint01));
+          const base = baseFor(f.hemi, f.mesh);
+          if (!showOverlay) {
+            scene.setHemiMesh(f.hemi, buildColoredGeometry(f.mesh, null, 1, colorFn, base));
+          } else if (mode === 'bytract') {
+            scene.setHemiMesh(f.hemi, buildTintedGeometry(f.mesh, f.perTract, tint01, base));
           } else {
             let overlay = null;
             f.perTract.forEach(ov => {
@@ -1698,7 +1801,7 @@ Vue.component('wmc-viewer', {
               if (!overlay) { overlay = Float32Array.from(ov); return; }
               for (let i = 0; i < overlay.length; i++) if (ov[i] > overlay[i]) overlay[i] = ov[i];
             });
-            scene.setHemiMesh(f.hemi, buildColoredGeometry(f.mesh, overlay, max, colorFn));
+            scene.setHemiMesh(f.hemi, buildColoredGeometry(f.mesh, overlay, max, colorFn, base));
           }
         });
         // If the chosen hemisphere has no map for this selection, fall back to both.

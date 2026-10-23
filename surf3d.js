@@ -138,7 +138,10 @@ function hotColor(t) {
 // Builds a colored BufferGeometry: thickness-shaded gray background (masked
 // out to a flat muted color on the medial wall via the ROI cortex mask),
 // with the tract's endpoint density painted on top in a hot colormap.
-function buildColoredGeometry(mesh, overlay, overlayMax, colorFn) {
+// `base` (optional, Float32Array n*3) replaces the grey shading with a
+// per-vertex base colour, e.g. a network atlas (see buildAtlasBase); the
+// overlay is then painted over it.
+function buildColoredGeometry(mesh, overlay, overlayMax, colorFn, base) {
   const cmap = colorFn || hotColor;
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
@@ -169,6 +172,7 @@ function buildColoredGeometry(mesh, overlay, overlayMax, colorFn) {
       g = 0.68 - 0.22 * t;
     }
     let r = g, gg = g, b = g;
+    if (base) { r = base[i * 3]; gg = base[i * 3 + 1]; b = base[i * 3 + 2]; }
     const v = overlay ? overlay[i] : 0;
     if (v > max * 0.02) {
       const c = cmap(v / max);
@@ -180,6 +184,38 @@ function buildColoredGeometry(mesh, overlay, overlayMax, colorFn) {
   return geo;
 }
 
+// Per-vertex base colours for a network atlas: each network's colour, kept
+// slightly shaded by cortical thickness so sulci stay visible. `focus`
+// (1-based network index) brightens that network and greys out the rest;
+// `hidden` = Set of network indices not to paint at all.
+function buildAtlasBase(mesh, labels, colors01, focus, hidden) {
+  const n = mesh.nVerts;
+  const base = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    let g = 0.62;
+    if (mesh.thickness) { const t = Math.max(0, Math.min(1, mesh.thickness[i] / 4.5)); g = 0.68 - 0.22 * t; }
+    const L = labels ? labels[i] : 0;
+    const c = L > 0 && (!hidden || !hidden.has(L)) ? colors01[L - 1] : null;
+    if (!c) { base[i * 3] = g; base[i * 3 + 1] = g; base[i * 3 + 2] = g; continue; }
+    // shade = how much of the network colour to keep over the grey
+    let k = 0.78;
+    if (focus) k = L === focus ? 0.98 : 0.18;
+    const shade = 0.75 + 0.25 * (g / 0.68);   // thickness texture
+    base[i * 3]     = (g + (c[0] - g) * k) * shade;
+    base[i * 3 + 1] = (g + (c[1] - g) * k) * shade;
+    base[i * 3 + 2] = (g + (c[2] - g) * k) * shade;
+  }
+  return base;
+}
+
+// Run-length decoded atlas labels: [value, run, value, run, …] → Uint8Array(n)
+function decodeRle(pairs, n) {
+  const out = new Uint8Array(n);
+  let i = 0;
+  for (let k = 0; k < pairs.length; k += 2) { const v = pairs[k], r = pairs[k + 1]; out.fill(v, i, i + r); i += r; }
+  return out;
+}
+
 // ─── Interactive scene (drag to rotate, scroll to zoom) ─────────────
 // A small hand-rolled orbit instead of THREE.OrbitControls, so no
 // extra example/module build is needed beyond the core three.min.js.
@@ -187,7 +223,7 @@ function buildColoredGeometry(mesh, overlay, overlayMax, colorFn) {
 // Winner-takes-all per vertex across several overlays, each with its own
 // colour: for every vertex the overlay with the highest (own-normalised)
 // value paints it at that intensity. Used for "colour by tract" in a cluster.
-function buildTintedGeometry(mesh, overlays, colors01) {
+function buildTintedGeometry(mesh, overlays, colors01, base) {
   const n = mesh.nVerts;
   const ownerVal = new Float32Array(n), owner = new Int16Array(n).fill(-1);
   overlays.forEach((ov, k) => {
@@ -208,10 +244,11 @@ function buildTintedGeometry(mesh, overlays, colors01) {
     let g = 0.58;
     if (mesh.thickness) { const t = Math.max(0, Math.min(1, mesh.thickness[i] / 4.5)); g = 0.64 - 0.22 * t; }
     let r = g, gg = g, b = g;
+    if (base) { r = base[i * 3]; gg = base[i * 3 + 1]; b = base[i * 3 + 2]; }
     const k = owner[i];
     if (k >= 0 && ownerVal[i] > 0.08 && colors01[k]) {
-      const base = colors01[k], t = Math.min(1, 0.35 + 0.65 * ownerVal[i]);
-      r = g + (base[0] - g) * t; gg = g + (base[1] - g) * t; b = g + (base[2] - g) * t;
+      const c = colors01[k], t = Math.min(1, 0.35 + 0.65 * ownerVal[i]);
+      r = r + (c[0] - r) * t; gg = gg + (c[1] - gg) * t; b = b + (c[2] - b) * t;
     }
     colors[i*3] = r; colors[i*3+1] = gg; colors[i*3+2] = b;
   }

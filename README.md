@@ -127,6 +127,7 @@ The site is static, so it can be served from GitHub Pages (Settings → Pages �
 | `surf3d.js` | GIFTI parsing + three.js cortical surface rendering |
 | `scripts/export_topic_terms.py` | builds `assets/decoding/topic-terms.json` |
 | `scripts/compute_network_correspondence.py` | builds `network-correspondence.csv` (run in the separate `cbig_nc` environment — see above) |
+| `scripts/export_network_atlases.py` | builds `assets/atlases/<CODE>.json`: the toolbox's six reference atlases upsampled from fsaverage6 to the fsaverage mesh, so the explorer can paint networks on the cortex under the endpoint maps |
 
 Dependencies are loaded from a CDN, with no build step: [Vue 2](https://v2.vuejs.org/), [PapaParse](https://www.papaparse.com/), [pako](https://github.com/nodeca/pako), [three.js](https://threejs.org/).
 

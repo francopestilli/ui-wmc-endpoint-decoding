@@ -156,10 +156,6 @@ const BRAIN_TEMPLATE = `
                     <option v-for="v in brainViews" :key="v.id" :value="v.id">{{ v.label }}</option>
                   </select>
                 </label>
-                <button class="btn small" :class="{ primary: brain.atlas }" @click="setAtlas(!brain.atlas)"
-                        :title="brain.atlas ? 'Hide the network atlas' : 'Paint the ' + atlasLabel(networkAtlas) + ' networks on the cortex'">
-                  {{ brain.atlas ? 'Networks on' : 'Networks' }}
-                </button>
                 <button class="icon-btn" @click="resetBrain()" title="Reset rotation and zoom" aria-label="Reset view">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg>
                 </button>
@@ -189,7 +185,7 @@ const BRAIN_TEMPLATE = `
                 </div>
               </div>
                 <div class="brain-legend atlas-legend" v-if="brain.atlas && atlasInfo">
-                  <span class="lg-label">{{ atlasInfo.title }} · <a href="#" @click.prevent="goToSection('networks')">change atlas</a></span>
+                  <span class="lg-label">{{ atlasInfo.title }} · <a href="#" @click.prevent="goToSection('networks')">change atlas</a> · <a href="#" @click.prevent="setAtlas(false)">hide</a></span>
                   <span v-for="(nm, i) in atlasInfo.names" :key="nm" class="tint" :class="{ active: focusNetwork === nm, hot: hoverNetwork === nm, muted: focusNetwork && focusNetwork !== nm }"
                         @click="toggleNetwork(nm)" @mouseenter="hoverNetwork = nm" @mouseleave="hoverNetwork = null" :title="'Click to isolate ' + nm">
                     <i :style="{ background: atlasInfo.colors[i] }"></i>{{ nm }}
@@ -1004,7 +1000,7 @@ Vue.component('wmc-viewer', {
         { target: 'subtabs', title: 'One panel at a time',
           body: 'The brain stays on the left; everything else is stacked on the right. This bar jumps to a section and shows where you are: the <b>overview</b> (top topics, best networks), all <b>topics</b> decoded from the map, the <b>radar & word cloud</b> figures from the paper, and <b>network</b> overlap.' },
         { target: 'map', title: 'Cortical endpoint map', prep: () => { this.goToSection('map'); },
-          body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. <b>Show</b> picks what is drawn (combined endpoints, one endpoint, a cluster coloured by tract), <b>View</b> jumps to a camera angle, and <b>Networks</b> paints the atlas chosen in the Networks section underneath. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
+          body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. <b>Show</b> picks what is drawn (combined endpoints, one endpoint, a cluster coloured by tract) and <b>View</b> jumps to a camera angle; the Networks section can paint its atlas underneath. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
         { target: 'glance', title: 'At a glance',
           body: 'Beside the map: the five strongest cognitive topics and the three best-matching brain networks for this selection, and a plain-language note on what the selection is. Click a topic here to open it directly.' },
         { target: 'topics', title: 'Decoded cognitive topics', prep: () => { this.goToSection('topics'); },

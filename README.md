@@ -1,6 +1,6 @@
 # WMC Tract Endpoint Decoding Viewer
 
-Interactive visualization of white matter tract endpoint decoding — how the cortical endpoints of each tract map onto meta-analytic cognitive topics (NeuroQuery LDA topics, decoded with [gradec](https://github.com/JulioAPeraza/gradec)) — built for the [brainlife.io](https://brainlife.io) platform.
+Interactive visualization of white matter tract endpoint decoding — how the cortical endpoints of each tract map onto meta-analytic cognitive topics (NeuroQuery LDA topics, decoded with the [gradec](https://gradec.readthedocs.io/en/latest/index.html) toolbox — [Peraza et al., 2024](https://direct.mit.edu/imag/article/doi/10.1162/imag_a_00081/119100/Methods-for-decoding-cortical-gradients-of)) — built for the [brainlife.io](https://brainlife.io) platform.
 
 Everything is drawn live in the browser from CSV / GIFTI data: no pre-rendered figures are needed.
 
@@ -139,3 +139,9 @@ This tool accompanies:
 > Human white matter tracts aligned with canonical functional brain networks
 > Kimberly L. Ray, Sohmee Kim, Karen Herrera, Suna Guo, Daniela Reyes, Julio A. Peraza, Anna Bostoganashvili, Gabriele Amorosino, Angela R. Laird, Franco Pestilli
 > doi: [10.64898/2026.05.20.726546](https://doi.org/10.64898/2026.05.20.726546)
+
+Topic decoding is performed with the [gradec](https://gradec.readthedocs.io/en/latest/index.html) Python toolbox:
+
+> Methods for decoding cortical gradients of function
+> Julio A. Peraza, et al., 2024
+> doi: [10.1162/imag_a_00081](https://direct.mit.edu/imag/article/doi/10.1162/imag_a_00081/119100/Methods-for-decoding-cortical-gradients-of)

@@ -347,9 +347,12 @@ Vue.component('wmc-viewer', {
             <template v-if="networkAtlases.length">
               <div class="tract-section-title" style="display:flex;align-items:center;">
                 Network Correspondence
-                <select class="network-atlas-select" v-model="networkAtlas">
-                  <option v-for="a in networkAtlases" :key="a" :value="a">{{ a }}</option>
-                </select>
+                <label class="network-atlas-label">
+                  Atlas
+                  <select class="network-atlas-select" v-model="networkAtlas">
+                    <option v-for="a in networkAtlases" :key="a" :value="a">{{ a }}</option>
+                  </select>
+                </label>
               </div>
               <p class="view-intro">
                 Dice overlap between this cluster's combined endpoint map and each network in the selected
@@ -449,7 +452,9 @@ ${SURF_PANEL_TEMPLATE}
             <!-- Radar + word cloud for each decoding, same column order -->
             <p class="view-intro" v-if="topicTerms && Object.keys(topicTerms).length">
               Ray et al., 2026 included only functional terms — uncheck "Functional terms only" below
-              to see the full list of all terms for each topic.
+              to see the full list of all terms for each topic. Topics are decoded with the
+              <a href="https://gradec.readthedocs.io/en/latest/index.html" target="_blank" rel="noopener">gradec</a>
+              toolbox (<a href="https://direct.mit.edu/imag/article/doi/10.1162/imag_a_00081/119100/Methods-for-decoding-cortical-gradients-of" target="_blank" rel="noopener">Peraza et al., 2024</a>).
             </p>
             <label class="chart-term-toggle" v-if="topicTerms && Object.keys(topicTerms).length">
               <input type="checkbox" v-model="topicFunctionalOnly" />
@@ -472,9 +477,12 @@ ${SURF_PANEL_TEMPLATE}
             <template v-if="networkAtlases.length">
               <div class="tract-section-title" style="display:flex;align-items:center;">
                 Network Correspondence
-                <select class="network-atlas-select" v-model="networkAtlas">
-                  <option v-for="a in networkAtlases" :key="a" :value="a">{{ a }}</option>
-                </select>
+                <label class="network-atlas-label">
+                  Atlas
+                  <select class="network-atlas-select" v-model="networkAtlas">
+                    <option v-for="a in networkAtlases" :key="a" :value="a">{{ a }}</option>
+                  </select>
+                </label>
               </div>
               <p class="view-intro">
                 Dice overlap between this tract's combined (LPI + RAS) endpoint map and each network in the
@@ -539,7 +547,7 @@ ${SURF_PANEL_TEMPLATE}
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="tract in tractOrder" :key="tract" @click="selectTractAndSwitch(tract)" style="cursor:pointer;">
+                <tr v-for="tract in matrixTractOrder" :key="tract" @click="selectTractAndSwitch(tract)" style="cursor:pointer;">
                   <th class="row-header" :style="{ borderLeft: '3px solid ' + tractClusterColor(tract) }">{{ tract }}</th>
                   <td
                     class="cell"
@@ -709,6 +717,17 @@ ${SURF_PANEL_TEMPLATE}
       return this.tractOrder.filter(t => t.toLowerCase().includes(q)).sort();
     },
 
+    // Full Matrix row order: same order the dendrogram's leaves are drawn in
+    // (so visually/functionally similar tracts sit next to each other),
+    // with tracts the dendrogram excluded (missing decoding scores) appended
+    // at the end in their original CSV order.
+    matrixTractOrder() {
+      if (!this.clustering) return this.tractOrder;
+      const ordered = this.clustering.leaves.map(i => this.clustering.tracts[i]);
+      const rest = this.tractOrder.filter(t => !ordered.includes(t));
+      return ordered.concat(rest);
+    },
+
     tractTopTopics() {
       if (!this.selectedTract || !this.matrix[this.selectedTract]) return [];
       const row = this.matrix[this.selectedTract];
@@ -734,6 +753,13 @@ ${SURF_PANEL_TEMPLATE}
   },
 
   mounted() {
+    // Deep link from the landing page's "Cluster View" / "Tract View" /
+    // "Full Matrix" cards (explorer.html#cluster|tract|matrix).
+    const hashTab = (location.hash || '').replace('#', '');
+    if (hashTab === 'tract') { this.tab = 'tract'; this.sideMode = 'tracts'; }
+    else if (hashTab === 'matrix') { this.tab = 'matrix'; }
+    else if (hashTab === 'cluster') { this.tab = 'cluster'; this.sideMode = 'clusters'; }
+
     if (!this.clustersEnabled) {
       this.sideMode = 'tracts';
       this.tab = 'tract';
@@ -815,10 +841,15 @@ ${SURF_PANEL_TEMPLATE}
             this.selectedTract = null;
           }
 
-          if (this.tab === 'tract' && this.selectedTract) {
-            // Keep showing the tract already selected; just refresh the
-            // live 3D surface panel for the new threshold's own data.
-            this.queueSurfRefresh();
+          if (this.tab === 'tract') {
+            // Stay on Tract View across the threshold switch. If a tract is
+            // already selected, just refresh the live 3D panel for the new
+            // threshold's own data; otherwise leave its normal "select a
+            // tract" empty state showing instead of jumping to Cluster View.
+            if (this.selectedTract) this.queueSurfRefresh();
+          } else if (this.tab === 'matrix') {
+            // Stay on Full Matrix too — it re-renders from the new matrix.csv
+            // on its own, nothing to (re)select here.
           } else if (this.clustersEnabled && this.clusters.length > 0) {
             this.selectCluster(this.clusters[0].id);
           }

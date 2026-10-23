@@ -446,10 +446,11 @@ body {
 .show-cluster-btn:hover { background: var(--surface2); }
 
 .tract-section-title {
-  font-size: 11px;
+  font-size: 16px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: .08em;
-  color: var(--text-muted);
+  letter-spacing: .06em;
+  color: var(--text);
   margin-bottom: 12px;
 }
 
@@ -722,9 +723,14 @@ table.matrix-table td.cell:hover { outline: 2px solid var(--accent); }
 .header-tract-list .tract-tag { color: var(--text); }
 
 /* ─── Network Correspondence (bar chart, same markup as topic bars) ──── */
+.network-atlas-label {
+  display: flex; align-items: center; gap: 6px; margin-left: auto;
+  font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: normal;
+  color: var(--text-muted);
+}
 .network-atlas-select {
   background: var(--surface2); color: var(--text); border: 1px solid var(--border);
-  border-radius: 6px; padding: 4px 8px; font-size: 12px; margin-left: auto;
+  border-radius: 6px; padding: 4px 8px; font-size: 12px;
 }
 .network-corr-empty { color: var(--text-muted); font-size: 12px; padding: 24px 0; text-align: center; }
 .topic-bar-label.network-sig { color: var(--text); font-weight: 700; }

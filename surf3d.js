@@ -184,6 +184,41 @@ function buildColoredGeometry(mesh, overlay, overlayMax, colorFn) {
 // A small hand-rolled orbit instead of THREE.OrbitControls, so no
 // extra example/module build is needed beyond the core three.min.js.
 
+// Winner-takes-all per vertex across several overlays, each with its own
+// colour: for every vertex the overlay with the highest (own-normalised)
+// value paints it at that intensity. Used for "colour by tract" in a cluster.
+function buildTintedGeometry(mesh, overlays, colors01) {
+  const n = mesh.nVerts;
+  const ownerVal = new Float32Array(n), owner = new Int16Array(n).fill(-1);
+  overlays.forEach((ov, k) => {
+    if (!ov) return;
+    let max = 0;
+    for (let i = 0; i < n; i++) if (ov[i] > max) max = ov[i];
+    if (max <= 0) return;
+    for (let i = 0; i < n; i++) { const t = ov[i] / max; if (t > ownerVal[i]) { ownerVal[i] = t; owner[i] = k; } }
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(mesh.positions, 3));
+  geo.setIndex(new THREE.BufferAttribute(new Uint32Array(mesh.indices), 1));
+  geo.computeVertexNormals();
+  const colors = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const isCortex = !mesh.roi || mesh.roi[i] > 0;
+    if (!isCortex) { colors[i*3] = 0.10; colors[i*3+1] = 0.16; colors[i*3+2] = 0.22; continue; }
+    let g = 0.58;
+    if (mesh.thickness) { const t = Math.max(0, Math.min(1, mesh.thickness[i] / 4.5)); g = 0.64 - 0.22 * t; }
+    let r = g, gg = g, b = g;
+    const k = owner[i];
+    if (k >= 0 && ownerVal[i] > 0.08 && colors01[k]) {
+      const base = colors01[k], t = Math.min(1, 0.35 + 0.65 * ownerVal[i]);
+      r = g + (base[0] - g) * t; gg = g + (base[1] - g) * t; b = g + (base[2] - g) * t;
+    }
+    colors[i*3] = r; colors[i*3+1] = gg; colors[i*3+2] = b;
+  }
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+  return geo;
+}
+
 class SurfaceScene {
   constructor(canvas) {
     this.canvas = canvas;
@@ -193,7 +228,7 @@ class SurfaceScene {
     this.scene = new THREE.Scene();
     this.camera = new THREE.PerspectiveCamera(32, 1, 1, 3000);
     this.camera.up.set(0, 0, 1); // fsaverage RAS space: +Z is superior
-    this.camera.position.set(140, -260, 200);
+    this.camera.position.set(140, -260, 200).setLength(330);
     this.camera.lookAt(0, 0, 0);
 
     this.group = new THREE.Group();
@@ -213,10 +248,32 @@ class SurfaceScene {
   // endpoints such as the arcuate's are hidden). Both → view from above.
   setDefaultView(hemis) {
     const lh = hemis.includes('lh'), rh = hemis.includes('rh');
-    const pos = lh && rh ? [0, -160, 360] : lh ? [-300, -60, 140] : [300, -60, 140];
+    this.setView(lh && rh ? 'dorsal' : lh ? 'lateral-left' : 'lateral-right');
+  }
+
+  // Named camera presets (fsaverage RAS: +X right, +Y anterior, +Z superior).
+  static get VIEWS() {
+    return {
+      'dorsal':        [0, -160, 360],
+      'ventral':       [0, -160, -360],
+      'lateral-left':  [-380, -40, 60],
+      'lateral-right': [380, -40, 60],
+      'anterior':      [0, 390, 60],
+      'posterior':     [0, -390, 60]
+    };
+  }
+  setView(name) {
+    const pos = SurfaceScene.VIEWS[name] || SurfaceScene.VIEWS.dorsal;
+    const dist = this.camera.position.length() || 330;   // keep the current zoom
     this.group.rotation.set(0, 0, 0);
-    this.camera.position.set(pos[0], pos[1], pos[2]);
+    this.camera.position.set(pos[0], pos[1], pos[2]).setLength(dist);
     this.camera.lookAt(0, 0, 0);
+  }
+  resetZoom() { this.camera.position.setLength(330); }
+
+  // Show / hide one hemisphere (e.g. to look at the medial wall of the other).
+  setHemiVisible(hemi, visible) {
+    if (this.meshes[hemi]) this.meshes[hemi].visible = !!visible;
   }
 
   setHemiMesh(hemi, geometry) {

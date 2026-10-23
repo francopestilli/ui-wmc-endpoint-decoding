@@ -16,6 +16,9 @@ const CLUSTER_COLORS = [
   '#e080c0'  // 9 – pink
 ];
 
+// Tints for 'colour by tract' inside a cluster (up to 12 members)
+const TRACT_TINTS = ['#ff6b6b', '#ffd166', '#06d6a0', '#4cc9f0', '#c77dff', '#ff9f1c', '#f15bb5', '#80ed99', '#9bf6ff', '#ffadad', '#bdb2ff', '#fdffb6'];
+
 // Diverging colour scale: blue → white → red (for decoding scores)
 function scoreToColor(v, vmin, vmax) {
   if (v === null || isNaN(v)) return '#2a2d40';
@@ -126,42 +129,63 @@ const TOPIC_PANEL_TEMPLATE = `
               </aside>
 `;
 
-// Shared 3D endpoint-map panel, used by both the Cluster and Tract views.
-// Only one view is mounted at a time, so the canvas refs never collide.
-const SURF_PANEL_TEMPLATE = `
-            <!-- Live 3D cortical endpoint map, rendered from func.gii (tract, or max across a cluster's tracts) -->
-            <div class="section" v-if="surfBase && surfMeshBase">
-              <p class="section-note">Where this tract's streamlines terminate on the cortex (endpoint density on the fsaverage surface), in the two orientation conventions of the dataset (RAS and LPI). Drag to rotate, scroll to zoom.</p>
-              <div class="tract-surf-row">
-                <div class="panel-card surf-card">
-                  <div class="panel-card-title">RAS endpoint</div>
-                  <div class="surf-canvas-wrap">
-                    <canvas ref="surfCanvasRAS"></canvas>
-                    <div class="surf-overlay" v-if="surfStatus.RAS === 'loading'"><div class="spinner"></div></div>
-                    <div class="surf-overlay surf-empty" v-if="surfStatus.RAS === 'empty'">No RAS surface data for this selection</div>
-                    <div class="surf-overlay surf-empty" v-if="surfStatus.RAS === 'nomembers'">Cluster membership couldn't be computed for this threshold</div>
-                    <div class="surf-overlay surf-empty" v-if="surfStatus.RAS === 'nowebgl'">3D view unavailable (WebGL failed to start in this browser)</div>
-                  </div>
-                  <div class="surf-legend" v-if="surfStatus.RAS === 'ready'">
-                    <span>0</span><div class="legend-grad hot"></div><span>{{ surfMax.RAS.toFixed(2) }}</span>
-                  </div>
+// Brain workspace: ONE large viewport shared by the Cluster and Tract views.
+// Toolbar: which map (tract: both / RAS / LPI; cluster: combined / by tract),
+// which hemisphere(s), and camera presets. Everything is drawn from func.gii.
+const BRAIN_TEMPLATE = `
+            <div class="brain-ws" v-if="surfBase && surfMeshBase">
+              <div class="brain-toolbar">
+                <div class="seg" role="group" aria-label="Map">
+                  <span class="seg-label">Map</span>
+                  <template v-if="tab === 'cluster'">
+                    <button :class="{ active: brain.mode === 'both' }" @click="setBrainMode('both')" title="Union of all member tracts' endpoints (per-vertex max)">Combined</button>
+                    <button :class="{ active: brain.mode === 'bytract' }" @click="setBrainMode('bytract')" title="Each vertex coloured by the member tract whose endpoints dominate there">By tract</button>
+                  </template>
+                  <template v-else>
+                    <button :class="{ active: brain.mode === 'both' }" @click="setBrainMode('both')" title="RAS and LPI endpoint maps merged (per-vertex max)">Both endpoints</button>
+                    <button :class="{ active: brain.mode === 'RAS' }" @click="setBrainMode('RAS')">RAS</button>
+                    <button :class="{ active: brain.mode === 'LPI' }" @click="setBrainMode('LPI')">LPI</button>
+                  </template>
                 </div>
-                <div class="panel-card surf-card">
-                  <div class="panel-card-title">LPI endpoint</div>
-                  <div class="surf-canvas-wrap">
-                    <canvas ref="surfCanvasLPI"></canvas>
-                    <div class="surf-overlay" v-if="surfStatus.LPI === 'loading'"><div class="spinner"></div></div>
-                    <div class="surf-overlay surf-empty" v-if="surfStatus.LPI === 'empty'">No LPI surface data for this selection</div>
-                    <div class="surf-overlay surf-empty" v-if="surfStatus.LPI === 'nomembers'">Cluster membership couldn't be computed for this threshold</div>
-                    <div class="surf-overlay surf-empty" v-if="surfStatus.LPI === 'nowebgl'">3D view unavailable (WebGL failed to start in this browser)</div>
-                  </div>
-                  <div class="surf-legend" v-if="surfStatus.LPI === 'ready'">
-                    <span>0</span><div class="legend-grad hot"></div><span>{{ surfMax.LPI.toFixed(2) }}</span>
-                  </div>
+                <div class="seg" role="group" aria-label="Hemisphere">
+                  <span class="seg-label">Hemisphere</span>
+                  <button :class="{ active: brain.hemi === 'both' }" @click="setBrainHemi('both')">Both</button>
+                  <button :class="{ active: brain.hemi === 'lh' }" @click="setBrainHemi('lh')">Left</button>
+                  <button :class="{ active: brain.hemi === 'rh' }" @click="setBrainHemi('rh')">Right</button>
+                </div>
+                <div class="seg" role="group" aria-label="View">
+                  <span class="seg-label">View</span>
+                  <button v-for="v in brainViews" :key="v.id" :class="{ active: brain.view === v.id }" @click="setBrainView(v.id)" :title="v.hint">{{ v.label }}</button>
+                </div>
+                <button class="icon-btn" @click="resetBrain()" title="Reset rotation and zoom" aria-label="Reset view">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 12a8 8 0 1 0 2.3-5.7M4 4v5h5"/></svg>
+                </button>
+              </div>
+              <div class="brain-stage">
+                <canvas ref="surfCanvas"></canvas>
+                <div class="surf-overlay" v-if="brain.status === 'loading'"><div class="spinner"></div></div>
+                <div class="surf-overlay surf-empty" v-if="brain.status === 'empty'">No endpoint map for this selection at this threshold</div>
+                <div class="surf-overlay surf-empty" v-if="brain.status === 'nomembers'">Cluster membership couldn't be computed for this threshold</div>
+                <div class="surf-overlay surf-empty" v-if="brain.status === 'nowebgl'">3D view unavailable (WebGL failed to start in this browser)</div>
+                <div class="brain-caption">
+                  <span v-if="tab === 'cluster'">Cluster {{ selectedCluster }} · {{ brain.mode === 'bytract' ? 'coloured by tract' : 'combined LPI + RAS' }}</span>
+                  <span v-else>{{ tractLabel(selectedTract) }} · {{ brain.mode === 'both' ? 'LPI + RAS' : brain.mode + ' endpoint' }}</span>
+                  <span class="hint">drag to rotate · scroll to zoom</span>
+                </div>
+                <div class="brain-legend" v-if="brain.status === 'ready'">
+                  <template v-if="brain.mode === 'bytract'">
+                    <span v-for="t in brainTints" :key="t.tract" class="tint" :class="{ active: hoverTract === t.tract }"
+                          @click="selectTractAndSwitch(t.tract)" :title="t.tract + ' — open in Tract view'">
+                      <i :style="{ background: t.color }"></i>{{ tractLabel(t.tract) }}
+                    </span>
+                  </template>
+                  <template v-else>
+                    <span class="lg-label">endpoint density</span>
+                    <span>0</span><div class="legend-grad" :style="{ background: brainLegendCss }"></div><span>{{ brain.max.toFixed(2) }}</span>
+                  </template>
                 </div>
               </div>
             </div>
-
 `;
 
 // First-visit guide shown at the top of the Cluster / Tract views until dismissed.
@@ -219,6 +243,27 @@ const GLANCE_TEMPLATE = `
             </div>
 `;
 
+// Topics panel header: chart / list switch + what-it-shows line.
+const TOPICS_HEAD_TEMPLATE = `
+              <div class="section-title">
+                <div class="seg" role="group" aria-label="Topics display">
+                  <button :class="{ active: topicsMode === 'chart' }" @click="topicsMode = 'chart'">Profile</button>
+                  <button :class="{ active: topicsMode === 'list' }" @click="topicsMode = 'list'">Ranked list</button>
+                </div>
+                <div class="controls">
+                  <span class="bar-legend" style="margin:0"><i style="background:#e57536"></i>positive r <i style="background:#3b9fd0;margin-left:10px"></i>negative r</span>
+                </div>
+              </div>
+              <p class="section-note" v-if="topicsMode === 'chart'">
+                Every one of the 104 NeuroQuery topics, placed by its correlation (Pearson r) with the endpoint map; stacked dots share the same value.
+                <template v-if="tab === 'tract'">The three lanes share one axis, so a topic that only one endpoint carries stands out at a glance.</template>
+                The strongest topics are labelled. Hover for the name and value; click a dot or a label to open the topic's term list (step 3).
+              </p>
+              <p class="section-note" v-else>
+                The strongest topics as a ranked list with exact values<template v-if="tab === 'tract'">, for the joint map and each endpoint on its own</template>. Click a topic to open its term list.
+              </p>
+`;
+
 // Sub-tabs: one panel on screen at a time.
 const SUBTABS_TEMPLATE = `
             <nav class="subtabs" role="tablist" aria-label="Sections" data-tour="subtabs">
@@ -227,28 +272,6 @@ const SUBTABS_TEMPLATE = `
                 <b>{{ st.label }}</b><small>{{ st.hint }}</small>
               </button>
             </nav>
-`;
-
-// Cluster View: ONE combined map — every member tract's LPI and RAS
-// endpoint maps merged (per-vertex max), like the "Cluster #N_LPI+RAS"
-// figures, coloured with the cluster's own colour ramp.
-const CLUSTER_SURF_TEMPLATE = `
-            <div class="section" v-if="surfBase && surfMeshBase">
-              <p class="section-note">Union of the endpoint maps of all {{ activeCluster.tracts.length }} tracts in this cluster (per-vertex maximum, both orientations). Drag to rotate, scroll to zoom.</p>
-              <div class="panel-card surf-card single">
-                <div class="panel-card-title">Cluster {{ selectedCluster }}<span>LPI + RAS combined</span></div>
-                <div class="surf-canvas-wrap">
-                  <canvas ref="surfCanvasRAS"></canvas>
-                  <div class="surf-overlay" v-if="surfStatus.RAS === 'loading'"><div class="spinner"></div></div>
-                  <div class="surf-overlay surf-empty" v-if="surfStatus.RAS === 'empty'">No surface data for this cluster's tracts</div>
-                  <div class="surf-overlay surf-empty" v-if="surfStatus.RAS === 'nomembers'">Cluster membership couldn't be computed for this threshold</div>
-                  <div class="surf-overlay surf-empty" v-if="surfStatus.RAS === 'nowebgl'">3D view unavailable (WebGL failed to start in this browser)</div>
-                </div>
-                <div class="surf-legend" v-if="surfStatus.RAS === 'ready'">
-                  <span>0</span><div class="legend-grad" :style="{ background: clusterLegendCss }"></div><span>{{ surfMax.RAS.toFixed(2) }}</span>
-                </div>
-              </div>
-            </div>
 `;
 
 // ─── Main component ────────────────────────────────────────────────
@@ -425,15 +448,19 @@ Vue.component('wmc-viewer', {
 
             <!-- Endpoint map (v-show keeps the WebGL canvas mounted) -->
             <div class="subpanel" v-show="subTab==='map'" data-tour="map">
-              ${CLUSTER_SURF_TEMPLATE}
+              ${BRAIN_TEMPLATE}
             </div>
 
             <!-- Topics -->
             <div class="subpanel" v-if="subTab==='topics'" id="topics-section" data-tour="topics">
               <template v-if="clusterMatrix[selectedCluster]">
-                <p class="section-note">The 15 topics most correlated with the cluster's combined endpoint map (Pearson r; orange = positive, blue = negative). Click a topic to open its full term list — that's step 3.</p>
-                <div class="topics-row">
-                  <div class="topic-bars">
+                ${TOPICS_HEAD_TEMPLATE}
+                <div class="topics-row" :class="{ stack: topicsMode === 'chart' }">
+                  <div class="profile-wrap" v-if="topicsMode === 'chart'">
+                    <topic-profile :lanes="profileLanes" :selected-topic="selectedTopic" :hover-topic="hoverTopic"
+                                   @select-topic="toggleTopic($event)" @hover-topic="hoverTopic = $event"></topic-profile>
+                  </div>
+                  <div class="topic-bars" v-else>
                     <div v-for="item in clusterTopTopics" :key="item.topic" class="topic-bar-row clickable"
                          :class="{ active: selectedTopic === item.topic, hot: hoverTopic === item.topic }" role="button" tabindex="0"
                          @click="toggleTopic(item.topic)" @keydown.enter.space.prevent="toggleTopic(item.topic)"
@@ -502,22 +529,6 @@ Vue.component('wmc-viewer', {
               <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this cluster.</div>
             </div>
 
-            <!-- All topics strip -->
-            <div class="subpanel" v-if="subTab==='all'" data-tour="all">
-              <p class="section-note">Every topic's decoding score for this cluster, in topic order. Hover a cell for the value.</p>
-              <div class="tract-strip-wrap" v-if="clusterMatrix[selectedCluster]">
-                <div class="tract-strip">
-                  <div v-for="topic in topics" :key="topic" class="strip-cell"
-                       :style="{ background: clusterCellColor(selectedCluster, topic) }"
-                       @mousemove="showClusterTip($event, selectedCluster, topic)" @mouseleave="hideTip"></div>
-                </div>
-                <div class="strip-legend">
-                  <span>{{ vmin.toFixed(2) }}</span><div class="legend-grad"></div><span>{{ vmax.toFixed(2) }}</span>
-                  <span style="margin-left:16px;color:var(--text-muted)">r</span>
-                </div>
-              </div>
-              <div v-else class="network-corr-empty">No cluster-level decoding for this threshold.</div>
-            </div>
           </div>
         </div>
 
@@ -553,17 +564,18 @@ Vue.component('wmc-viewer', {
             ${SUBTABS_TEMPLATE}
 
             <div class="subpanel" v-show="subTab==='map'" data-tour="map">
-              ${SURF_PANEL_TEMPLATE}
+              ${BRAIN_TEMPLATE}
             </div>
 
             <!-- Decoding: joint (LPI + RAS) vs. each endpoint on its own -->
             <div class="subpanel" v-if="subTab==='topics'" id="topics-section" data-tour="topics">
-              <p class="section-note">
-                The 10 topics most correlated with the tract's endpoints: the joint (LPI + RAS) map, then each endpoint decoded on its own.
-                Bars share one scale so the three columns are directly comparable. Click a topic to open its full term list — that's step 3.
-              </p>
-              <div class="topics-row">
-                <div class="endpoint-cols">
+              ${TOPICS_HEAD_TEMPLATE}
+              <div class="topics-row" :class="{ stack: topicsMode === 'chart' }">
+                <div class="profile-wrap" v-if="topicsMode === 'chart'">
+                  <topic-profile :lanes="profileLanes" :selected-topic="selectedTopic" :hover-topic="hoverTopic"
+                                 @select-topic="toggleTopic($event)" @hover-topic="hoverTopic = $event"></topic-profile>
+                </div>
+                <div class="endpoint-cols" v-else>
                   <div class="endpoint-col" v-for="src in endpointSources" :key="src.key">
                     <div class="endpoint-col-title">{{ src.label }}</div>
                     <div v-if="!src.has" class="endpoint-empty">No {{ src.key }}-only decoding for this tract at this threshold.</div>
@@ -642,21 +654,6 @@ Vue.component('wmc-viewer', {
               <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this tract.</div>
             </div>
 
-            <!-- All topics strip -->
-            <div class="subpanel" v-if="subTab==='all'" data-tour="all">
-              <p class="section-note">Every topic's joint decoding score for this tract, in topic order — one row of the full matrix. Hover a cell for the value.</p>
-              <div class="tract-strip-wrap">
-                <div class="tract-strip">
-                  <div v-for="topic in topics" :key="topic" class="strip-cell"
-                       :style="{ background: cellColor(selectedTract, topic) }"
-                       @mousemove="showTip($event, selectedTract, topic)" @mouseleave="hideTip"></div>
-                </div>
-                <div class="strip-legend">
-                  <span>{{ vmin.toFixed(2) }}</span><div class="legend-grad"></div><span>{{ vmax.toFixed(2) }}</span>
-                  <span style="margin-left:16px;color:var(--text-muted)">r</span>
-                </div>
-              </div>
-            </div>
           </div>
         </div>
 
@@ -791,9 +788,10 @@ Vue.component('wmc-viewer', {
       vmin: -0.5,
       vmax: 0.5,
       tooltip: { visible: false, x: 0, y: 0, tract: '', topic: '', value: null },
-      // 3D cortical endpoint map (Tract View) — 'idle' | 'loading' | 'ready' | 'empty'
-      surfStatus: { RAS: 'idle', LPI: 'idle' },
-      surfMax: { RAS: 0, LPI: 0 },
+      // Brain workspace state. mode: 'both' | 'RAS' | 'LPI' | 'bytract'; status: 'idle' | 'loading' | 'ready' | 'empty' | 'nomembers' | 'nowebgl'
+      brain: { mode: 'both', hemi: 'both', view: 'dorsal', status: 'idle', max: 0 },
+      brainTints: [],            // [{ tract, color }] legend for "by tract" mode
+      hoverTract: null,
       // Network Correspondence Toolbox (Kong et al. 2025) results, from
       // network-correspondence.csv: { "tract|leftArc": { TY7: [{name,dice,p_value}], TY17: [...] } }
       networkCorrespondence: {},
@@ -803,7 +801,8 @@ Vue.component('wmc-viewer', {
       sidebarOpen: false,        // mobile drawer
       helpOpen: false,           // "How to use" dialog
       hoverTopic: null,          // topic under the pointer in a bar / radar / word cloud (links the three)
-      subTab: 'map',             // 'map' | 'topics' | 'charts' | 'networks' | 'all'
+      subTab: 'map',             // 'map' | 'topics' | 'charts' | 'networks'
+      topicsMode: 'chart',       // Topics panel: 'chart' (profile beeswarm) | 'list' (ranked bars)
       // Guided tour: spotlight + card over the live page (see tourSteps / startTour)
       tour: { active: false, step: 0, rect: null, place: 'below', cardStyle: {} },
       dendroOpen: true,          // dendrogram shown in the sidebar
@@ -894,6 +893,19 @@ Vue.component('wmc-viewer', {
     clusterLegendCss() {
       return rampGradientCss(clusterRamp(this.activeCluster ? this.activeCluster.color : null));
     },
+    brainLegendCss() {
+      return this.tab === 'cluster' ? this.clusterLegendCss : 'linear-gradient(to right, #000, #c00, #fc0, #fff)';
+    },
+    brainViews() {
+      return [
+        { id: 'lateral-left',  label: 'L lat',   hint: 'Left lateral' },
+        { id: 'lateral-right', label: 'R lat',   hint: 'Right lateral' },
+        { id: 'dorsal',        label: 'Top',     hint: 'Dorsal' },
+        { id: 'ventral',       label: 'Bottom',  hint: 'Ventral' },
+        { id: 'anterior',      label: 'Front',   hint: 'Anterior' },
+        { id: 'posterior',     label: 'Back',    hint: 'Posterior' }
+      ];
+    },
     // Tracts whose endpoint maps the 3D panel should show right now.
     surfTracts() {
       if (this.tab === 'tract') return this.selectedTract ? [this.selectedTract] : [];
@@ -954,11 +966,11 @@ Vue.component('wmc-viewer', {
         { target: 'glance', title: 'At a glance',
           body: 'The summary strip: the five strongest cognitive topics and the three best-matching brain networks for this selection. Click a topic here to open it directly.' },
         { target: 'subtabs', title: 'One panel at a time',
-          body: 'Everything else lives in these sections: the <b>endpoint map</b>, the <b>topics</b> decoded from it, the <b>radar & word cloud</b> figures, <b>network</b> overlap, and the <b>full row of 104 topics</b>. Each section says what it shows.' },
+          body: 'Everything else lives in these sections: the <b>endpoint map</b>, the <b>topics</b> decoded from it, the <b>radar & word cloud</b> figures and <b>network</b> overlap. Each section says what it shows.' },
         { target: 'map', title: 'Cortical endpoint map', prep: () => { this.subTab = 'map'; },
-          body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
+          body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. Switch endpoint (RAS / LPI), colour a cluster by its member tracts, show one hemisphere, or jump to a view preset. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
         { target: 'topics', title: 'Decoded cognitive topics', prep: () => { this.subTab = 'topics'; },
-          body: 'Each bar is the Pearson correlation between the endpoint map and one of 104 NeuroQuery topics (gradec). Orange is positive, blue negative. In the tract view the joint map sits next to each endpoint decoded on its own.' },
+          body: 'All 104 NeuroQuery topics at once: each dot is one topic, placed by its correlation (Pearson r) with the endpoint map. Orange is positive, blue negative, and the strongest are labelled. In the tract view the joint map and the two endpoints are lanes on one shared axis.' },
         { target: 'topic-panel', title: 'Step 3: inside a topic', prep: () => { this.subTab = 'topics'; const t = firstTopic(); if (t) this.selectedTopic = t; },
           body: 'Clicking a topic opens its full 40-term list with LDA weights and term type: <b>F</b>unctional, <b>A</b>natomical, <b>C</b>linical, <b>N</b>on-specific. The <b>Functional terms only</b> switch matches the paper\'s figures.' },
         { target: 'charts', title: 'Radar chart & word cloud', prep: () => { this.subTab = 'charts'; },
@@ -978,9 +990,15 @@ Vue.component('wmc-viewer', {
         { id: 'map',      label: 'Endpoint map',       hint: 'Where the fibres end on the cortex',           available: hasSurf },
         { id: 'topics',   label: 'Topics',             hint: 'Cognitive topics decoded from the map',        available: hasScores },
         { id: 'charts',   label: 'Radar & word cloud', hint: "The paper's figures, live and clickable",      available: hasScores },
-        { id: 'networks', label: 'Networks',           hint: 'Overlap with canonical brain networks',        available: this.networkAtlases.length > 0 },
-        { id: 'all',      label: 'All 104 topics',     hint: 'The full decoding row as a heat strip',        available: hasScores }
+        { id: 'networks', label: 'Networks',           hint: 'Overlap with canonical brain networks',        available: this.networkAtlases.length > 0 }
       ];
+    },
+    // Lanes for the topic profile chart: one row per decoding.
+    profileLanes() {
+      if (this.tab === 'cluster') {
+        return [{ key: 'cluster', label: 'Cluster ' + this.selectedCluster + ' · combined map', row: this.clusterMatrix[this.selectedCluster] || null }];
+      }
+      return this.endpointSources.map(src => ({ key: src.key, label: src.label, row: src.row || null }));
     },
     // "At a glance" strip
     glanceTopics() {
@@ -1561,40 +1579,26 @@ Vue.component('wmc-viewer', {
       };
     },
 
-    // ── 3D cortical endpoint map (Tract View) ──────────────────────
-    // Lazily creates the two SurfaceScene instances (RAS/LPI canvases)
-    // the first time they're needed; reused across tract selections.
+    // ── Brain workspace (one SurfaceScene on the shared canvas) ──────
     ensureSurfScenes() {
       if (!this.surfMeshBase || this._webglFailed) return;
       try {
-        // The Tract View (and its <canvas> elements) is torn down and rebuilt
-        // by Vue whenever the "Loading data…" panel shows (e.g. on a threshold
-        // change). A scene bound to a canvas that's no longer in the DOM would
-        // render invisibly, so drop it and rebind to the current canvas.
-        if (this._surfRAS && this._surfRAS.canvas !== this.$refs.surfCanvasRAS) { this._surfRAS.dispose(); this._surfRAS = null; }
-        if (this._surfLPI && this._surfLPI.canvas !== this.$refs.surfCanvasLPI) { this._surfLPI.dispose(); this._surfLPI = null; }
-        if (!this._surfRAS && this.$refs.surfCanvasRAS) this._surfRAS = new SurfaceScene(this.$refs.surfCanvasRAS);
-        if (!this._surfLPI && this.$refs.surfCanvasLPI) this._surfLPI = new SurfaceScene(this.$refs.surfCanvasLPI);
+        // The canvas is rebuilt by Vue when a view unmounts; rebind if so.
+        if (this._surf && this._surf.canvas !== this.$refs.surfCanvas) { this._surf.dispose(); this._surf = null; }
+        if (!this._surf && this.$refs.surfCanvas) this._surf = new SurfaceScene(this.$refs.surfCanvas);
       } catch (err) {
-        // e.g. WebGL unavailable/disabled — fail soft instead of breaking the page.
         console.error('3D surface view unavailable (WebGL failed to initialize):', err);
         this._webglFailed = true;
-        this.surfStatus.RAS = 'nowebgl';
-        this.surfStatus.LPI = 'nowebgl';
+        this.brain.status = 'nowebgl';
         this.disposeSurfScenes();
       }
     },
 
     disposeSurfScenes() {
-      // Invalidate any in-flight request too, so a slow response that resolves
-      // after disposal can't call setHemiMesh() on scenes that no longer exist.
       this._surfRequestId = (this._surfRequestId || 0) + 1;
-      if (this._surfRAS) { this._surfRAS.dispose(); this._surfRAS = null; }
-      if (this._surfLPI) { this._surfLPI.dispose(); this._surfLPI = null; }
+      if (this._surf) { this._surf.dispose(); this._surf = null; }
     },
 
-    // Collapses multiple watcher-triggered refresh requests landing in the
-    // same tick into a single actual refresh (see the `watch` block above).
     queueSurfRefresh() {
       if (this._surfRefreshQueued) return;
       this._surfRefreshQueued = true;
@@ -1604,100 +1608,120 @@ Vue.component('wmc-viewer', {
       });
     },
 
+    // Toolbar actions
+    setBrainMode(mode) { this.brain.mode = mode; this.queueSurfRefresh(); },
+    setBrainHemi(h) {
+      this.brain.hemi = h;
+      if (this._surf) { this._surf.setHemiVisible('lh', h !== 'rh'); this._surf.setHemiVisible('rh', h !== 'lh'); }
+      // Looking at one hemisphere: default to its lateral side.
+      if (h === 'lh' && this.brain.view === 'dorsal') this.setBrainView('lateral-left');
+      if (h === 'rh' && this.brain.view === 'dorsal') this.setBrainView('lateral-right');
+    },
+    setBrainView(v) { this.brain.view = v; if (this._surf) this._surf.setView(v); },
+    resetBrain() { if (this._surf) { this._surf.resetZoom(); this._surf.setView(this.brain.view); } },
+
+    // Cached GIFTI fetches: toggling map / hemisphere / threshold never
+    // re-downloads a file the page already parsed.
+    cachedGifti(url) {
+      this._giftiCache = this._giftiCache || new Map();
+      if (!this._giftiCache.has(url)) this._giftiCache.set(url, fetchGifti(url).catch(() => null));
+      return this._giftiCache.get(url);
+    },
+
     refreshTractSurfaces() {
       if (!this.surfBase || !this.surfMeshBase) return;
       if (this.tab === 'tract' && !this.selectedTract) return;
       if (this.tab === 'cluster' && !this.activeCluster) return;
+      // Mode sanity: 'bytract' only makes sense for a cluster, RAS/LPI only for a tract.
+      if (this.tab === 'cluster' && (this.brain.mode === 'RAS' || this.brain.mode === 'LPI')) this.brain.mode = 'both';
+      if (this.tab === 'tract' && this.brain.mode === 'bytract') this.brain.mode = 'both';
       this.ensureSurfScenes();
       if (this._webglFailed) return;
-      if (!this.surfTracts.length) {
-        // Cluster selected, but its member tracts are unknown for this threshold.
-        this.disposeSurfScenes();
-        this.surfStatus.RAS = 'nomembers';
-        this.surfStatus.LPI = 'nomembers';
-        return;
-      }
-      // Bump the request generation so an in-flight fetch from a threshold/tract
-      // we've since navigated away from can recognize itself as stale and
-      // discard its result instead of overwriting whatever loaded after it —
-      // tract selection alone isn't a reliable staleness signal here, since
-      // the same tract can stay selected across a threshold switch.
+      if (!this.surfTracts.length) { this.brain.status = 'nomembers'; return; }
       const requestId = (this._surfRequestId = (this._surfRequestId || 0) + 1);
-      if (this.tab === 'cluster') {
-        // One combined view: both orientations merged into the single canvas.
-        this.loadTractSurface('RAS', requestId, ['RAS', 'LPI']);
-      } else {
-        ['RAS', 'LPI'].forEach(orient => this.loadTractSurface(orient, requestId));
-      }
+      this.loadBrain(requestId);
     },
 
-    // Fetches lh/rh func.gii for the given orientation for every tract in
-    // surfTracts (one tract in Tract View, all member tracts in Cluster View),
-    // colours the shared fsaverage mesh with them and drops them into the
-    // scene. For a cluster, member maps are combined as the per-vertex MAX,
-    // i.e. the union of the cluster's endpoint territory. manifest.json (when
-    // present) limits requests to hemi/orientation combos that exist.
-    // `orient` picks the canvas/status slot; `sourceOrients` lists which
-    // orientations' files feed it (Cluster View merges RAS + LPI into one).
-    loadTractSurface(orient, requestId, sourceOrients = [orient]) {
-      const scene = orient === 'RAS' ? this._surfRAS : this._surfLPI;
+    // Fetches lh/rh func.gii for every tract in surfTracts (one tract in Tract
+    // View, all member tracts in Cluster View) and the orientations the mode
+    // asks for, colours the shared fsaverage mesh and drops it into the scene.
+    // 'both'/'RAS'/'LPI': per-vertex MAX across the chosen maps (one colour ramp).
+    // 'bytract': winner-takes-all across member tracts, each its own tint.
+    loadBrain(requestId) {
+      const scene = this._surf;
+      if (!scene) return;
       const isCluster = this.tab === 'cluster';
+      const mode = this.brain.mode;
+      const orients = mode === 'RAS' || mode === 'LPI' ? [mode] : ['RAS', 'LPI'];
+      const tracts = this.surfTracts.slice();
+      const surfBase = this.surfBase, meshBase = this.surfMeshBase;
       const stops = isCluster ? clusterRamp(this.activeCluster.color) : null;
       const colorFn = stops ? (t => rampRgb01(stops, 0.25 + 0.75 * t)) : null;
-      if (!scene) return;
-      const tracts = this.surfTracts.slice();
-      const label = tracts.length === 1 ? tracts[0] : `cluster ${this.selectedCluster}`;
-      const surfBase = this.surfBase;
-      const meshBase = this.surfMeshBase;
+      const tintHex = tracts.map((t, i) => TRACT_TINTS[i % TRACT_TINTS.length]);
+      const tint01 = tintHex.map(h => { const n = parseInt(h.slice(1), 16); return [((n >> 16) & 255) / 255, ((n >> 8) & 255) / 255, (n & 255) / 255]; });
 
-      this.surfStatus[orient] = 'loading';
-      scene.clearHemi('lh');
-      scene.clearHemi('rh');
+      this.brain.status = 'loading';
+      this.brainTints = mode === 'bytract' ? tracts.map((tract, i) => ({ tract, color: tintHex[i] })) : [];
 
-      loadSurfManifest(surfBase).then(manifest => {
-        return Promise.all(['lh', 'rh'].map(hemi => {
-          const wanted = [];   // [tract, orientation] pairs that exist
-          tracts.forEach(t => sourceOrients.forEach(o => {
-            if (!manifest || (manifest[t] && manifest[t][hemi] && manifest[t][hemi].includes(o))) wanted.push([t, o]);
-          }));
-          if (!wanted.length) return null;
-          return Promise.all([
-            loadHemiMesh(meshBase, hemi),
-            Promise.all(wanted.map(([t, o]) =>
-              fetchGifti(`${surfBase}/${hemi}.${t}.${o}.func.gii`).catch(() => null)
-            ))
-          ]).then(([mesh, perTract]) => {
-            let overlay = null;
-            perTract.forEach(arrays => {
-              if (!arrays || !arrays.length) return;
-              const d = (arrays.find(a => a.dim0 === mesh.nVerts) || arrays[0]).values;
-              if (!overlay) { overlay = Float32Array.from(d); return; }
-              for (let i = 0; i < overlay.length; i++) if (d[i] > overlay[i]) overlay[i] = d[i];
-            });
-            return overlay ? { hemi, mesh, overlay } : null;
-          });
+      loadSurfManifest(surfBase).then(manifest => Promise.all(['lh', 'rh'].map(hemi => {
+        const wanted = [];   // [tractIndex, orientation]
+        tracts.forEach((t, ti) => orients.forEach(o => {
+          if (!manifest || (manifest[t] && manifest[t][hemi] && manifest[t][hemi].includes(o))) wanted.push([ti, o]);
         }));
-      }).then(results => {
-        // A newer refresh (tract OR threshold change) has started since this
-        // request went out — drop this result rather than risk a slow old
-        // response overwriting what the newer request already loaded.
-        if (requestId !== this._surfRequestId) return;
+        if (!wanted.length) return null;
+        return Promise.all([
+          loadHemiMesh(meshBase, hemi),
+          Promise.all(wanted.map(([ti, o]) => this.cachedGifti(`${surfBase}/${hemi}.${tracts[ti]}.${o}.func.gii`)))
+        ]).then(([mesh, arrays]) => {
+          const perTract = tracts.map(() => null);
+          let any = false;
+          arrays.forEach((arr, k) => {
+            if (!arr || !arr.length) return;
+            const d = (arr.find(a => a.dim0 === mesh.nVerts) || arr[0]).values;
+            const ti = wanted[k][0];
+            if (!perTract[ti]) { perTract[ti] = Float32Array.from(d); }
+            else { const ov = perTract[ti]; for (let i = 0; i < ov.length; i++) if (d[i] > ov[i]) ov[i] = d[i]; }
+            any = true;
+          });
+          return any ? { hemi, mesh, perTract } : null;
+        });
+      }))).then(results => {
+        if (requestId !== this._surfRequestId) return;   // a newer request superseded this one
         const found = results.filter(Boolean);
-        if (!found.length) { this.surfStatus[orient] = 'empty'; return; }
-
+        if (!found.length) { scene.clearHemi('lh'); scene.clearHemi('rh'); this.brain.status = 'empty'; return; }
         let max = 0;
+        found.forEach(f => f.perTract.forEach(ov => { if (ov) for (let i = 0; i < ov.length; i++) if (ov[i] > max) max = ov[i]; }));
+        ['lh', 'rh'].forEach(h => { if (!found.some(f => f.hemi === h)) scene.clearHemi(h); });
         found.forEach(f => {
-          for (let i = 0; i < f.overlay.length; i++) if (f.overlay[i] > max) max = f.overlay[i];
+          if (mode === 'bytract') {
+            scene.setHemiMesh(f.hemi, buildTintedGeometry(f.mesh, f.perTract, tint01));
+          } else {
+            let overlay = null;
+            f.perTract.forEach(ov => {
+              if (!ov) return;
+              if (!overlay) { overlay = Float32Array.from(ov); return; }
+              for (let i = 0; i < overlay.length; i++) if (ov[i] > overlay[i]) overlay[i] = ov[i];
+            });
+            scene.setHemiMesh(f.hemi, buildColoredGeometry(f.mesh, overlay, max, colorFn));
+          }
         });
-        found.forEach(f => {
-          scene.setHemiMesh(f.hemi, buildColoredGeometry(f.mesh, f.overlay, max, colorFn));
-        });
-        scene.setDefaultView(found.map(f => f.hemi));
-        this.surfMax[orient] = max;
-        this.surfStatus[orient] = 'ready';
+        // If the chosen hemisphere has no map for this selection, fall back to both.
+        const haveHemis = found.map(f => f.hemi);
+        if (this.brain.hemi !== 'both' && !haveHemis.includes(this.brain.hemi)) this.brain.hemi = 'both';
+        scene.setHemiVisible('lh', this.brain.hemi !== 'rh');
+        scene.setHemiVisible('rh', this.brain.hemi !== 'lh');
+        // First load of a selection: pick a sensible camera; later reloads keep the user's view.
+        if (this._brainKey !== this.tab + '|' + tracts.join(',')) {
+          this._brainKey = this.tab + '|' + tracts.join(',');
+          const hemis = found.map(f => f.hemi);
+          const v = hemis.length === 2 ? 'dorsal' : hemis[0] === 'lh' ? 'lateral-left' : 'lateral-right';
+          this.brain.view = v; scene.resetZoom(); scene.setView(v);
+        }
+        this.brain.max = max;
+        this.brain.status = 'ready';
       }).catch(err => {
-        console.error(`Failed to load ${orient} surface for ${label}:`, err);
-        if (requestId === this._surfRequestId) this.surfStatus[orient] = 'empty';
+        console.error('Failed to load endpoint map:', err);
+        if (requestId === this._surfRequestId) this.brain.status = 'empty';
       });
     }
   }

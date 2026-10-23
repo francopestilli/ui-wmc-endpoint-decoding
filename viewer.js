@@ -238,7 +238,7 @@ const GLANCE_TEMPLATE = `
                   </button>
                 </div>
                 <div class="glance-empty" v-else>No decoding at this threshold</div>
-                <button class="glance-more" @click="subTab = 'topics'">All top topics →</button>
+                <button class="glance-more" @click="goToSection('topics')">All top topics →</button>
               </div>
               <div class="glance-card">
                 <div class="glance-title">Best networks <span>{{ networkAtlas || '' }} · Dice</span></div>
@@ -250,7 +250,7 @@ const GLANCE_TEMPLATE = `
                   </div>
                 </div>
                 <div class="glance-empty" v-else>No network correspondence for this threshold</div>
-                <button class="glance-more" @click="subTab = 'networks'" v-if="networkAtlases.length">All networks &amp; atlases →</button>
+                <button class="glance-more" @click="goToSection('networks')" v-if="networkAtlases.length">All networks &amp; atlases →</button>
               </div>
               <div class="glance-card glance-how">
                 <div class="glance-title">What you're looking at</div>
@@ -294,9 +294,9 @@ const NETWORK_TOOLS_TEMPLATE = `
 
 // Sub-tabs: one panel on screen at a time.
 const SUBTABS_TEMPLATE = `
-            <nav class="subtabs" role="tablist" aria-label="Sections" data-tour="subtabs">
-              <button v-for="st in subTabs" :key="st.id" role="tab" class="subtab" :class="{ active: subTab === st.id }"
-                      :aria-selected="subTab === st.id" :disabled="!st.available" @click="subTab = st.id" :title="st.hint">
+            <nav class="subtabs" aria-label="Sections" data-tour="subtabs">
+              <button v-for="st in subTabs" :key="st.id" class="subtab" :class="{ active: subTab === st.id }"
+                      :disabled="!st.available" @click="goToSection(st.id)" :title="st.hint">
                 <b>{{ st.label }}</b><small>{{ st.hint }}</small>
               </button>
             </nav>
@@ -460,12 +460,14 @@ Vue.component('wmc-viewer', {
               <div class="ws-brain" data-tour="map">${BRAIN_TEMPLATE}</div>
               <div class="ws-panels">
             ${SUBTABS_TEMPLATE}
-            <div class="subpanel" v-if="subTab==='map'">
+            <section class="subpanel" id="sec-map" data-section="map">
+              <h3 class="sec-head"><span>Overview</span><small>Top topics, best networks, what this is</small></h3>
               ${GLANCE_TEMPLATE}
-            </div>
+            </section>
 
             <!-- Topics -->
-            <div class="subpanel" v-if="subTab==='topics'" id="topics-section" data-tour="topics">
+            <section class="subpanel" id="sec-topics" data-tour="topics" data-section="topics">
+              <h3 class="sec-head"><span>Topics</span><small>All 104 cognitive topics decoded from the endpoint map</small></h3>
               <template v-if="clusterMatrix[selectedCluster]">
                 ${TOPICS_HEAD_TEMPLATE}
                 <div class="topics-row" :class="{ stack: topicsMode === 'chart' }">
@@ -489,10 +491,11 @@ Vue.component('wmc-viewer', {
                 </div>
               </template>
               <div v-else class="network-corr-empty">No cluster-level decoding for this threshold.</div>
-            </div>
+            </section>
 
             <!-- Radar + word cloud -->
-            <div class="subpanel" v-if="subTab==='charts'" data-tour="charts">
+            <section class="subpanel" id="sec-charts" data-tour="charts" data-section="charts">
+              <h3 class="sec-head"><span>Radar &amp; word cloud</span><small>The paper's figures (Figs. 3–4), drawn live</small></h3>
               <div class="section-title">
                 <div class="controls" style="margin-left:0">
                   <label class="chart-term-toggle" v-if="topicTerms && Object.keys(topicTerms).length" style="margin:0">
@@ -512,10 +515,11 @@ Vue.component('wmc-viewer', {
                 </div>
               </div>
               <div v-else class="network-corr-empty">No cluster-level decoding for this threshold.</div>
-            </div>
+            </section>
 
             <!-- Network correspondence -->
-            <div class="subpanel" v-if="subTab==='networks'" data-tour="networks">
+            <section class="subpanel" id="sec-networks" data-tour="networks" data-section="networks">
+              <h3 class="sec-head"><span>Networks</span><small>Overlap with canonical brain networks (Dice, spin test)</small></h3>
               <div class="section-title">
                 <div class="controls" style="margin-left:0">
                   <label>Atlas
@@ -544,7 +548,7 @@ Vue.component('wmc-viewer', {
                 </div>
               </div>
               <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this cluster.</div>
-            </div>
+            </section>
               </div>
             </div>
 
@@ -584,12 +588,14 @@ Vue.component('wmc-viewer', {
               <div class="ws-brain" data-tour="map">${BRAIN_TEMPLATE}</div>
               <div class="ws-panels">
             ${SUBTABS_TEMPLATE}
-            <div class="subpanel" v-if="subTab==='map'">
+            <section class="subpanel" id="sec-map" data-section="map">
+              <h3 class="sec-head"><span>Overview</span><small>Top topics, best networks, what this is</small></h3>
               ${GLANCE_TEMPLATE}
-            </div>
+            </section>
 
             <!-- Decoding: joint (LPI + RAS) vs. each endpoint on its own -->
-            <div class="subpanel" v-if="subTab==='topics'" id="topics-section" data-tour="topics">
+            <section class="subpanel" id="sec-topics" data-tour="topics" data-section="topics">
+              <h3 class="sec-head"><span>Topics</span><small>All 104 cognitive topics decoded from the endpoint map</small></h3>
               ${TOPICS_HEAD_TEMPLATE}
               <div class="topics-row" :class="{ stack: topicsMode === 'chart' }">
                 <div class="profile-wrap" v-if="topicsMode === 'chart'">
@@ -616,10 +622,11 @@ Vue.component('wmc-viewer', {
                 </div>
                 ${TOPIC_PANEL_TEMPLATE}
               </div>
-            </div>
+            </section>
 
             <!-- Radar + word cloud per decoding -->
-            <div class="subpanel" v-if="subTab==='charts'" data-tour="charts">
+            <section class="subpanel" id="sec-charts" data-tour="charts" data-section="charts">
+              <h3 class="sec-head"><span>Radar &amp; word cloud</span><small>The paper's figures (Figs. 3–4), drawn live</small></h3>
               <div class="section-title">
                 <div class="controls" style="margin-left:0">
                   <label class="chart-term-toggle" v-if="topicTerms && Object.keys(topicTerms).length" style="margin:0">
@@ -645,10 +652,11 @@ Vue.component('wmc-viewer', {
                   <div v-else class="endpoint-empty chart-empty-card">No {{ src.key }}-only decoding</div>
                 </div>
               </div>
-            </div>
+            </section>
 
             <!-- Network correspondence -->
-            <div class="subpanel" v-if="subTab==='networks'" data-tour="networks">
+            <section class="subpanel" id="sec-networks" data-tour="networks" data-section="networks">
+              <h3 class="sec-head"><span>Networks</span><small>Overlap with canonical brain networks (Dice, spin test)</small></h3>
               <div class="section-title">
                 <div class="controls" style="margin-left:0">
                   <label>Atlas
@@ -677,7 +685,7 @@ Vue.component('wmc-viewer', {
                 </div>
               </div>
               <div v-else class="network-corr-empty">No {{ networkAtlas }} correspondence for this tract.</div>
-            </div>
+            </section>
               </div>
             </div>
 
@@ -999,20 +1007,20 @@ Vue.component('wmc-viewer', {
         { target: 'selection', title: 'What is selected', prep: () => { this.sidebarOpen = false; if (this.tab === 'matrix') this.showClusterView(); },
           body: 'The header names the selected cluster or tract, how it was defined, and its members. The tags are shortcuts: click a tract to go to step 2, or jump back to its cluster.' },
         { target: 'subtabs', title: 'One panel at a time',
-          body: '<b>Overview</b> shows the endpoint map with the top topics and best networks beside it. The other sections go deeper: all <b>topics</b> decoded from the map, the <b>radar & word cloud</b> figures from the paper, and <b>network</b> overlap.' },
-        { target: 'map', title: 'Cortical endpoint map', prep: () => { this.subTab = 'map'; },
+          body: 'The brain stays on the left; everything else is stacked on the right. This bar jumps to a section and shows where you are: the <b>overview</b> (top topics, best networks), all <b>topics</b> decoded from the map, the <b>radar & word cloud</b> figures from the paper, and <b>network</b> overlap.' },
+        { target: 'map', title: 'Cortical endpoint map', prep: () => { this.goToSection('map'); },
           body: 'Where the tract\'s streamlines end on the cortex, as endpoint density on the fsaverage surface. For a cluster it is the union of its members\' maps. Switch endpoint (RAS / LPI), colour a cluster by its member tracts, show one hemisphere, or jump to a view preset. <b>Drag</b> to rotate, <b>scroll</b> to zoom.' },
         { target: 'glance', title: 'At a glance',
           body: 'Beside the map: the five strongest cognitive topics and the three best-matching brain networks for this selection, and a plain-language note on what the selection is. Click a topic here to open it directly.' },
-        { target: 'topics', title: 'Decoded cognitive topics', prep: () => { this.subTab = 'topics'; },
+        { target: 'topics', title: 'Decoded cognitive topics', prep: () => { this.goToSection('topics'); },
           body: 'All 104 NeuroQuery topics at once: each dot is one topic, placed by its correlation (Pearson r) with the endpoint map. Orange is positive, blue negative, and the strongest are labelled. In the tract view the joint map and the two endpoints are lanes on one shared axis.' },
-        { target: 'topic-panel', title: 'Step 3: inside a topic', prep: () => { this.subTab = 'topics'; const t = firstTopic(); if (t) this.selectedTopic = t; },
+        { target: 'topic-panel', title: 'Step 3: inside a topic', prep: () => { const t = firstTopic(); if (t) this.selectedTopic = t; this.goToSection('topics'); },
           body: 'Clicking a topic opens its full 40-term list with LDA weights and term type: <b>F</b>unctional, <b>A</b>natomical, <b>C</b>linical, <b>N</b>on-specific. The <b>Functional terms only</b> switch matches the paper\'s figures.' },
-        { target: 'charts', title: 'Radar chart & word cloud', prep: () => { this.subTab = 'charts'; },
+        { target: 'charts', title: 'Radar chart & word cloud', prep: () => { this.goToSection('charts'); },
           body: 'The paper\'s figures, drawn live. Brighter means a stronger topic. Hover a bar or a word to see what it belongs to; click one to open that topic.' },
-        { target: 'networks', title: 'Network correspondence', prep: () => { this.subTab = 'networks'; },
+        { target: 'networks', title: 'Network correspondence', prep: () => { this.goToSection('networks'); },
           body: 'Dice overlap between the endpoint map and each network of a reference atlas (Yeo, Gordon, Schaefer, Glasser, Shen). Bold / starred networks survive a spin test (p < 0.05). <b>Show networks on the brain</b> paints the atlas on the cortex with the endpoint map on top; hover a row to find that network, click to isolate it.' },
-        { target: 'matrix-btn', title: 'Or browse everything', prep: () => { this.subTab = 'map'; },
+        { target: 'matrix-btn', title: 'Or browse everything', prep: () => { this.goToSection('map'); },
           body: 'The <b>full matrix</b> shows all tracts against all topics as one heatmap, ordered like the dendrogram. Click any row to open that tract. That\'s the tour: the <b>?</b> button has a written version.' }
       ];
     },
@@ -1115,6 +1123,7 @@ Vue.component('wmc-viewer', {
     if (this._tourKey) { window.removeEventListener('keydown', this._tourKey); window.removeEventListener('resize', this._tourResize); }
   },
 
+  updated() { if (!this._secObsQueued) { this._secObsQueued = true; this.$nextTick(() => { this._secObsQueued = false; this.observeSections(); }); } },
   watch: {
     networkAtlas() { if (this.brain.atlas) { this.focusNetwork = null; this.queueSurfRefresh(); } },
     hoverNetwork(v) {
@@ -1357,11 +1366,30 @@ Vue.component('wmc-viewer', {
     },
     scrollToTopic() {
       if (this.tab === 'matrix') this.tab = this.selectedTract ? 'tract' : 'cluster';
-      this.subTab = 'topics';
       this.$nextTick(() => {
-        const el = this.$el.querySelector('#topics-section');
+        const el = this.$el.querySelector('#sec-topics');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       });
+    },
+    // Section nav: scroll the right-hand column to a section; the active
+    // entry follows the scroll position (see observeSections).
+    goToSection(id) {
+      this.subTab = id;
+      this.$nextTick(() => {
+        const el = this.$el.querySelector('#sec-' + id);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    },
+    observeSections() {
+      if (this._secObs) this._secObs.disconnect();
+      const root = this.$el.querySelector('.tab-panel');
+      const secs = this.$el.querySelectorAll('section.subpanel[data-section]');
+      if (!root || !secs.length || typeof IntersectionObserver === 'undefined') return;
+      this._secObs = new IntersectionObserver(entries => {
+        const vis = entries.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio);
+        if (vis.length) this.subTab = vis[0].target.dataset.section;
+      }, { root, threshold: [0.25, 0.5, 0.75] });
+      secs.forEach(el => this._secObs.observe(el));
     },
     openFirstMatch() {
       if (this.filteredTracts.length) { this.selectTractAndSwitch(this.filteredTracts[0]); this.tractSearch = ''; }

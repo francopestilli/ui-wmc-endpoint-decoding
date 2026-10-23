@@ -417,7 +417,6 @@ body.explorer { height: 100vh; overflow: hidden; }
 
 /* Workspace: brain on the left (sticky), sections on the right */
 .workspace { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(0, 1.1fr); gap: 20px; align-items: start; }
-.ws-brain { position: sticky; top: 0; }
 .ws-brain .brain-ws { max-width: none; }
 .ws-panels { min-width: 0; }
 .glance { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -441,7 +440,7 @@ body.explorer { height: 100vh; overflow: hidden; }
 .glance-how p { margin: 0; color: var(--muted); font-size: .86rem; line-height: 1.5; }
 @media (max-width: 700px) { .glance { grid-template-columns: 1fr; } }
 
-.subtabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; }
+.subtabs { display: flex; flex-wrap: wrap; gap: 4px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; position: sticky; top: 0; z-index: 5; background: var(--bg); padding-top: 2px; box-shadow: 0 8px 12px -8px rgba(0,0,0,.6); }
 .ws-panels .subtab { padding: 8px 12px; }
 .ws-panels .subtab small { display: none; }
 .ws-panels .subtab b { font-size: .9rem; }
@@ -453,6 +452,11 @@ body.explorer { height: 100vh; overflow: hidden; }
 .subtab.active small { color: var(--muted); }
 .subtab:disabled { opacity: .4; cursor: default; }
 .subpanel { min-height: 200px; }
+section.subpanel { padding: 4px 0 28px; margin-bottom: 20px; border-bottom: 1px solid var(--rule); scroll-margin-top: 56px; }
+section.subpanel:last-child { border-bottom: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; font-size: 1.05rem; }
+.sec-head small { font-size: .8rem; font-weight: 400; color: var(--soft); }
+.ws-brain { position: sticky; top: 0; z-index: 1; }
 .subpanel .section { margin-bottom: 0; }
 
 /* Sections inside a view */

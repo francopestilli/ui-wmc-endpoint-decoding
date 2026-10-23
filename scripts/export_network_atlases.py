@@ -57,11 +57,56 @@ ATLASES = {
     'EG286_12': ('WashU/EG286_12',  'Gordon 286 parcels / 12 networks'),
 }
 
-# Canonical Yeo colours where they exist; a distinct categorical palette elsewhere.
-YEO7 = {'Visual': '#781286', 'Somatomotor': '#4682B4', 'DorsAttn': '#00760E', 'Sal/VenAttn': '#C43AFA',
-        'Limbic': '#DCF8A4', 'Control': '#E69422', 'Default': '#CD3E4E'}
-PALETTE = ['#CD3E4E', '#781286', '#E69422', '#00760E', '#C43AFA', '#4682B4', '#DCF8A4', '#2AB0A0',
-           '#F4A261', '#7FB3D5', '#D4A843', '#E080C0', '#6BBF6B', '#B0C93E', '#9B75D4', '#5AACCC', '#FF9F1C']
+# Colours follow the Yeo 7 convention for every atlas, so the same family
+# (visual, somatomotor, dorsal attention, salience/ventral attention, limbic,
+# control/frontoparietal, default) looks the same whichever atlas is shown;
+# subdivisions (A/B/C, 1/2, lateral/medial…) get lighter/darker shades of the
+# family colour. Families the Yeo 7 lacks (language, auditory, cingulo-
+# opercular, memory, …) get their own fixed colours.
+FAMILY = [  # (substring to match on the lower-cased network name, colour)
+    ('visual', '#781286'), ('vis', '#781286'),
+    ('somatomotor', '#4682B4'), ('sommot', '#4682B4'), ('motor', '#4682B4'), ('handsm', '#4682B4'), ('facesm', '#5A9BD5'), ('footsm', '#2F5F8F'), ('sm', '#4682B4'),
+    ('dorsattn', '#00760E'),
+    ('sal/venattn', '#C43AFA'), ('salventattn', '#C43AFA'), ('ventattn', '#C43AFA'), ('salience', '#C43AFA'), ('salsubcor', '#C43AFA'),
+    ('limbic', '#DCF8A4'), ('orbitaffective', '#DCF8A4'),
+    ('context', '#9B6B4F'), ('control', '#E69422'), ('cont', '#E69422'), ('frontpar', '#E69422'),
+    ('default', '#CD3E4E'), ('medfront', '#CD3E4E'),
+    ('language', '#1FB9B0'), ('auditory', '#F2D53C'), ('cingoperc', '#B57A2B'),
+    ('temppar', '#7FB3D5'), ('postmulti', '#8AD1B8'), ('ventmulti', '#C7B8E6'),
+    ('antmtl', '#E89AC7'), ('postmtl', '#B8528F'), ('parmemory', '#D26BA6'), ('medpar', '#C9C9C9'), ('paroccip', '#5B5F8F'), ('parocc', '#5B5F8F'),
+    ('premotor', '#9BC4E6'), ('latvis', '#9A4DB3'), ('medvis', '#5A0E6B'), ('visassoc', '#B07CC6'),
+]
+FALLBACK = ['#F4A261', '#2AB0A0', '#9B75D4', '#B0C93E', '#E080C0', '#5AACCC', '#D4A843', '#6BBF6B']
+
+
+def _shade(hex_, k):
+    """k < 0 darkens, k > 0 lightens (fraction towards black / white)."""
+    r, g, b = (int(hex_[i:i + 2], 16) for i in (1, 3, 5))
+    if k >= 0:
+        r, g, b = (int(round(c + (255 - c) * k)) for c in (r, g, b))
+    else:
+        r, g, b = (int(round(c * (1 + k))) for c in (r, g, b))
+    return '#%02X%02X%02X' % (r, g, b)
+
+
+def family_colours(names):
+    base, fam = [], []
+    for nm in names:
+        key = nm.lower().replace(' ', '')
+        col = next((c for sub, c in FAMILY if sub in key), None)
+        fam.append(col)
+        base.append(col)
+    # Subdivisions of one family (DefaultA/B/C, Visual1/2, VisualA/B …) get distinct shades.
+    out = []
+    used = {}
+    nxt = 0
+    for nm, col in zip(names, base):
+        if col is None:
+            col = FALLBACK[nxt % len(FALLBACK)]; nxt += 1
+            out.append(col); continue
+        k = used.get(col, 0); used[col] = k + 1
+        out.append(col if k == 0 else _shade(col, [0.28, -0.3, 0.5, -0.5][(k - 1) % 4]))
+    return out
 
 
 def rle(a):
@@ -107,7 +152,7 @@ def main(data_dir):
         ids = np.setdiff1d(np.unique(np.concatenate([lab['lh'], lab['rh']])), [0])
         assert len(ids) == len(names), (code, len(ids), len(names))
         remap = {int(i): k + 1 for k, i in enumerate(ids)}
-        colors = [YEO7.get(nm, PALETTE[k % len(PALETTE)]) if code == 'TY7' else PALETTE[k % len(PALETTE)] for k, nm in enumerate(names)]
+        colors = family_colours(names)
         rec = {'code': code, 'title': title, 'names': names, 'colors': colors, 'n': int(len(nn['lh']))}
         for h in ('lh', 'rh'):
             full = lab[h][nn[h]]

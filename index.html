@@ -5,21 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>White Matter Tract Explorer — Pestilli Lab</title>
   <meta name="description" content="Explore how the cortical endpoints of 51 human white matter tracts map onto meta-analytic cognitive topics and canonical functional brain networks. Companion site to Ray et al." />
-  <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml" />
+  <link rel="icon" href="assets/img/mark.svg" type="image/svg+xml" />
   <link rel="stylesheet" href="style.css" />
 </head>
 <body class="landing">
 
   <header class="site-header">
     <div class="bar">
-      <a class="brand" href="https://pestillilab.github.io/" title="Pestilli Lab"><img src="assets/img/pestilli-lab.svg" alt="Pestilli Lab" /></a>
-      <span class="brand-divider"></span>
-      <a class="site-title" href="index.html" aria-current="page"><b>White Matter Tract Explorer</b><span>Ray et al. · companion site</span></a>
+      <a class="site-title" href="index.html" aria-current="page"><img class="mark" src="assets/img/mark.svg" alt="" /><span class="words"><b>White Matter Tract Explorer</b><span>Ray et al. · companion site</span></span></a>
       <nav class="nav" aria-label="Main">
         <a href="#how">How it works</a>
         <a href="#paper">Paper</a>
         <a href="https://github.com/kimberlylray/ui-wmc-endpoint-decoding" class="ext hide-sm" target="_blank" rel="noopener">Code &amp; data</a>
-        <a href="https://pestillilab.github.io/" class="ext hide-sm" target="_blank" rel="noopener">Pestilli Lab</a>
+        <a class="lab-link hide-sm" href="https://pestillilab.github.io/" target="_blank" rel="noopener" title="A project of the Pestilli Lab, UT Austin"><img src="assets/img/pestilli-lab.svg" alt="Pestilli Lab" /></a>
         <a class="btn primary small" href="explorer.html">Open the explorer</a>
       </nav>
     </div>
@@ -72,7 +70,7 @@
         <a class="step accent-yellow" href="explorer.html#cluster">
           <span class="num">STEP 01</span>
           <h3>Pick a cluster</h3>
-          <div class="step-visual" id="dendroPreviewWrap">
+          <div class="step-visual" id="dendroPreviewWrap" title="Detail of the dendrogram: one cluster's subtree">
             <div id="dendroPreview"><div class="preview-loading"><div class="spinner"></div></div></div>
           </div>
           <p>Tracts are grouped by how similar their functional profiles are (hierarchical clustering on the decoding scores). Each cluster shows its combined endpoint map, top topics and network overlap.</p>
@@ -180,8 +178,9 @@
     <div class="wrap">
       <div class="cols">
         <div>
-          <a class="brand" href="https://pestillilab.github.io/"><img src="assets/img/pestilli-lab.svg" alt="Pestilli Lab" /></a>
-          <p class="address">Department of Psychology · The University of Texas at Austin<br />Developed by Kim Ray, Pestilli Lab. Supported by brainlife.io.</p>
+          <a class="site-title" href="index.html"><img class="mark" src="assets/img/mark.svg" alt="" /><span class="words"><b>White Matter Tract Explorer</b><span>Ray et al. · companion site</span></span></a>
+          <p class="address">A project of the <a href="https://pestillilab.github.io/" target="_blank" rel="noopener">Pestilli Lab</a>, Department of Psychology, The University of Texas at Austin.<br />Developed by Kim Ray. Supported by brainlife.io.</p>
+          <a class="brand" href="https://pestillilab.github.io/" target="_blank" rel="noopener" style="margin-top:14px"><img src="assets/img/pestilli-lab.svg" alt="Pestilli Lab" /></a>
         </div>
         <div>
           <h4>Explore</h4>
@@ -276,8 +275,17 @@
             data: { clustering: Object.freeze(clustering), colors: PREVIEW_CLUSTER_COLORS },
             template: `<tract-dendrogram :clustering="clustering" :colors="colors"></tract-dendrogram>`,
             mounted() {
-              // Thumbnail: let the tall dendrogram fill the card (structure only; labels are hidden by CSS)
-              this.$nextTick(() => { const svg = this.$el.querySelector('svg'); if (svg) svg.setAttribute('preserveAspectRatio', 'none'); });
+              // Thumbnail: zoom into the bottom of the dendrogram (one cluster's
+              // subtree, labels readable) instead of squeezing all 51 leaves in.
+              this.$nextTick(() => {
+                const svg = this.$el.tagName && this.$el.tagName.toLowerCase() === 'svg' ? this.$el : this.$el.querySelector('svg');
+                if (!svg) return;
+                const [, , W, H] = (svg.getAttribute('viewBox') || '0 0 260 700').split(' ').map(Number);
+                const ROW = 13, AXIS = 20, PAD = 6, rows = 12;
+                const y0 = H - AXIS - PAD - rows * ROW;
+                svg.setAttribute('viewBox', `0 ${y0} ${W} ${rows * ROW}`);
+                svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+              });
             }
           });
           renderHeroBrain(clustering);
@@ -291,7 +299,7 @@
             .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1])).slice(0, 6);
           const max = Math.max(...top.map(([, v]) => Math.abs(v))) || 1;
           host.innerHTML = top.map(([k, v]) =>
-            `<div class="row"><span title="${k}">${topicLabel(k)}</span><i style="width:${(Math.abs(v) / max) * 100}%;background:${v >= 0 ? '#f9c926' : '#3b9fd0'}"></i></div>`
+            `<div class="row"><span title="${k}">${topicLabel(k)}</span><i style="width:${(Math.abs(v) / max) * 100}%;background:${v >= 0 ? '#3fd2ff' : '#e57536'}"></i></div>`
           ).join('');
         }
       },

@@ -217,9 +217,7 @@ Vue.component('wmc-viewer', {
         <button class="icon-btn sidebar-toggle" @click="sidebarOpen = !sidebarOpen" aria-label="Toggle tract list">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 7h16M4 12h16M4 17h16"/></svg>
         </button>
-        <a class="brand" href="https://pestillilab.github.io/" title="Pestilli Lab"><img src="assets/img/pestilli-lab.svg" alt="Pestilli Lab" /></a>
-        <span class="brand-divider"></span>
-        <a class="site-title" href="index.html" title="Back to the overview"><b>White Matter Tract Explorer</b><span>Ray et al. · companion site</span></a>
+        <a class="site-title" href="index.html" title="Back to the overview"><img class="mark" src="assets/img/mark.svg" alt="" /><span class="words"><b>White Matter Tract Explorer</b><span>Ray et al. · companion site</span></span></a>
         <nav class="nav">
           <div class="control-group" title="Endpoint-density threshold used to define tract endpoints (and the number of clusters it yields)">
             <label>Threshold</label>
@@ -228,6 +226,7 @@ Vue.component('wmc-viewer', {
             </select>
           </div>
           <span class="stat-chip hide-sm" v-if="tractOrder.length">{{ tractOrder.length }} tracts · {{ topics.length }} topics</span>
+          <a class="lab-link hide-sm" href="https://pestillilab.github.io/" target="_blank" rel="noopener" title="A project of the Pestilli Lab, UT Austin"><img src="assets/img/pestilli-lab.svg" alt="Pestilli Lab" /></a>
           <button class="icon-btn" @click="helpOpen = true" aria-label="How to use the explorer" title="How to use the explorer">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7M12 17h.01"/></svg>
           </button>
@@ -396,8 +395,9 @@ Vue.component('wmc-viewer', {
               <div class="topics-row">
               <div class="topic-bars">
                 <div v-for="item in clusterTopTopics" :key="item.topic" class="topic-bar-row clickable"
-                     :class="{ active: selectedTopic === item.topic }" role="button" tabindex="0"
-                     @click="toggleTopic(item.topic)" @keydown.enter.space.prevent="toggleTopic(item.topic)">
+                     :class="{ active: selectedTopic === item.topic, hot: hoverTopic === item.topic }" role="button" tabindex="0"
+                     @click="toggleTopic(item.topic)" @keydown.enter.space.prevent="toggleTopic(item.topic)"
+                     @mouseenter="hoverTopic = item.topic" @mouseleave="hoverTopic = null">
                   <div class="topic-bar-label" :title="'Click to see all terms in ' + item.topic">{{ topicLabel(item.topic) }}</div>
                   <div class="topic-bar-track">
                     <div
@@ -424,15 +424,15 @@ Vue.component('wmc-viewer', {
                   </label>
                 </div>
               </div>
-              <p class="section-note">The paper's figures, drawn live from the same decoding scores. With “Functional terms only” on (as in Ray et al.), labels use each topic's functional terms; off, they use every term.</p>
+              <p class="section-note">The paper's figures, drawn live from the same decoding scores. Hover a bar, a word or a topic above to see them light up together; click a bar or a word to open its topic (step 3). With “Functional terms only” on (as in Ray et al.), labels use each topic's functional terms; off, they use every term.</p>
               <div class="tract-img-row">
                 <div class="panel-card">
                   <div class="panel-card-title">Radar chart<span v-if="chartTermSets">functional terms</span></div>
-                  <topic-radar :scores="clusterScores" :color="activeCluster.color" :term-sets="chartTermSets"></topic-radar>
+                  <topic-radar :scores="clusterScores" :color="activeCluster.color" :term-sets="chartTermSets" :selected-topic="selectedTopic" :hover-topic="hoverTopic" @select-topic="openTopic" @hover-topic="hoverTopic = $event"></topic-radar>
                 </div>
                 <div class="panel-card">
                   <div class="panel-card-title">Word cloud<span v-if="chartTermSets">functional terms</span></div>
-                  <topic-wordcloud :scores="clusterScores" :color="activeCluster.color" :term-sets="chartTermSets"></topic-wordcloud>
+                  <topic-wordcloud :scores="clusterScores" :color="activeCluster.color" :term-sets="chartTermSets" :selected-topic="selectedTopic" :hover-topic="hoverTopic" @select-topic="openTopic" @hover-topic="hoverTopic = $event"></topic-wordcloud>
                 </div>
               </div>
             </div>
@@ -540,8 +540,9 @@ ${SURF_PANEL_TEMPLATE}
                   <div v-if="!src.has" class="endpoint-empty">No {{ src.key }}-only decoding for this tract at this threshold.</div>
                   <div v-else class="topic-bars">
                     <div v-for="item in src.top" :key="item.topic" class="topic-bar-row clickable"
-                         :class="{ active: selectedTopic === item.topic }" role="button" tabindex="0"
-                         @click="toggleTopic(item.topic)" @keydown.enter.space.prevent="toggleTopic(item.topic)">
+                         :class="{ active: selectedTopic === item.topic, hot: hoverTopic === item.topic }" role="button" tabindex="0"
+                         @click="toggleTopic(item.topic)" @keydown.enter.space.prevent="toggleTopic(item.topic)"
+                         @mouseenter="hoverTopic = item.topic" @mouseleave="hoverTopic = null">
                       <div class="topic-bar-label" :title="'Click to see all terms in ' + item.topic">{{ topicLabel(item.topic) }}</div>
                       <div class="topic-bar-track">
                         <div class="topic-bar-fill"
@@ -567,6 +568,7 @@ ${SURF_PANEL_TEMPLATE}
               </div>
               <p class="section-note">
                 One radar chart and word cloud per decoding (joint, RAS, LPI), in the same order as the columns above.
+                Hover to link bars, words and topics; click a bar or a word to open its topic (step 3).
                 Ray et al. used functional terms only — turn the switch off to label with every term. Topics are decoded with
                 <a href="https://gradec.readthedocs.io/en/latest/index.html" target="_blank" rel="noopener">gradec</a>
                 (<a href="https://direct.mit.edu/imag/article/doi/10.1162/imag_a_00081/119100/Methods-for-decoding-cortical-gradients-of" target="_blank" rel="noopener">Peraza et al., 2024</a>).
@@ -574,12 +576,12 @@ ${SURF_PANEL_TEMPLATE}
               <div class="endpoint-charts">
                 <div class="panel-card" v-for="src in endpointSources" :key="'radar-' + src.key">
                   <div class="panel-card-title">Radar<span>{{ src.label }}</span></div>
-                  <topic-radar v-if="src.has" :scores="src.row" :color="tractChartColor" :term-sets="chartTermSets"></topic-radar>
+                  <topic-radar v-if="src.has" :scores="src.row" :color="tractChartColor" :term-sets="chartTermSets" :selected-topic="selectedTopic" :hover-topic="hoverTopic" @select-topic="openTopic" @hover-topic="hoverTopic = $event"></topic-radar>
                   <div v-else class="endpoint-empty chart-empty-card">No {{ src.key }}-only decoding</div>
                 </div>
                 <div class="panel-card" v-for="src in endpointSources" :key="'cloud-' + src.key">
                   <div class="panel-card-title">Word cloud<span>{{ src.label }}</span></div>
-                  <topic-wordcloud v-if="src.has" :scores="src.row" :color="tractChartColor" :term-sets="chartTermSets"></topic-wordcloud>
+                  <topic-wordcloud v-if="src.has" :scores="src.row" :color="tractChartColor" :term-sets="chartTermSets" :selected-topic="selectedTopic" :hover-topic="hoverTopic" @select-topic="openTopic" @hover-topic="hoverTopic = $event"></topic-wordcloud>
                   <div v-else class="endpoint-empty chart-empty-card">No {{ src.key }}-only decoding</div>
                 </div>
               </div>
@@ -759,6 +761,7 @@ ${SURF_PANEL_TEMPLATE}
       // ── UI state for the guided workflow ──
       sidebarOpen: false,        // mobile drawer
       helpOpen: false,           // "How to use" dialog
+      hoverTopic: null,          // topic under the pointer in a bar / radar / word cloud (links the three)
       dendroOpen: true,          // dendrogram shown in the sidebar
       openClusters: {},          // { clusterId: true } — expanded rows in the sidebar tree
       guideDismissed: readPref('wmc.guideDismissed') === '1'
@@ -1232,6 +1235,12 @@ ${SURF_PANEL_TEMPLATE}
       });
     },
     toggleTopic(topic) { this.selectedTopic = this.selectedTopic === topic ? null : topic; },
+    // From a radar bar or word-cloud word: open the topic (step 3) and bring its term list into view.
+    openTopic(topic) {
+      if (!topic) return;
+      this.selectedTopic = topic;
+      this.scrollToTopic();
+    },
     termClassCss(c) { return 'tc-' + String(c).toLowerCase().replace(/[^a-z]/g, ''); },
     termClassShort(c) { return String(c).charAt(0).toUpperCase(); },
     loadTopicTerms() {

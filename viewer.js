@@ -276,6 +276,11 @@ const NETWORK_TOOLS_TEMPLATE = `
                 <button class="btn small" :class="{ primary: brain.atlas }" @click="setAtlas(!brain.atlas)">
                   {{ brain.atlas ? 'Shown on the brain' : 'Show on the brain' }}
                 </button>
+                <label class="opacity" v-if="brain.atlas" title="How strongly the networks are painted on the cortex">
+                  <span>Opacity</span>
+                  <input type="range" min="0.1" max="1" step="0.05" v-model.number="brain.atlasOpacity" @input="onAtlasOpacity" aria-label="Network opacity" />
+                  <b>{{ Math.round(brain.atlasOpacity * 100) }}%</b>
+                </label>
                 <span class="net-hint" v-if="brain.atlas">Hover a row to find it on the cortex, click to isolate.<template v-if="focusNetwork"> <a href="#" @click.prevent="focusNetwork = null; queueSurfRefresh()">Show all</a>.</template></span>
               </div>
 `;
@@ -812,7 +817,7 @@ Vue.component('wmc-viewer', {
       vmax: 0.5,
       tooltip: { visible: false, x: 0, y: 0, tract: '', topic: '', value: null },
       // Brain workspace state. mode: 'both' | 'RAS' | 'LPI' | 'bytract'; status: 'idle' | 'loading' | 'ready' | 'empty' | 'nomembers' | 'nowebgl'
-      brain: { mode: 'both', hemi: 'both', view: 'dorsal', status: 'idle', max: 0, atlas: false, overlay: true },
+      brain: { mode: 'both', hemi: 'both', view: 'dorsal', status: 'idle', max: 0, atlas: false, overlay: true, atlasOpacity: 0.8 },
       brainTints: [],            // [{ tract, color }] legend for "by tract" mode
       hoverTract: null,
       // Network atlas painted on the cortex (assets/atlases/<code>.json, from scripts/export_network_atlases.py)
@@ -1683,6 +1688,11 @@ Vue.component('wmc-viewer', {
     // Toolbar actions
     setBrainMode(mode) { this.brain.mode = mode; this.queueSurfRefresh(); },
     setAtlas(on) { this.brain.atlas = !!on; if (!on) { this.focusNetwork = null; if (this.brain.mode === 'none') this.brain.mode = 'both'; } this.queueSurfRefresh(); },
+    // Opacity slider: re-colour the mesh at most every ~80 ms while dragging.
+    onAtlasOpacity() {
+      clearTimeout(this._opacityTimer);
+      this._opacityTimer = setTimeout(() => this.queueSurfRefresh(), 80);
+    },
     toggleNetwork(name) {
       this.focusNetwork = this.focusNetwork === name ? null : name;
       if (!this.brain.atlas) this.brain.atlas = true;
@@ -1804,7 +1814,7 @@ Vue.component('wmc-viewer', {
         const atlas = this._atlas;
         const focusName = this.focusNetwork || this._hoverFocus;
         const focusIdx = atlas && focusName ? atlas.names.indexOf(focusName) + 1 : 0;
-        const baseFor = (hemi, mesh) => atlas ? buildAtlasBase(mesh, atlas[hemi], atlas.colors01, focusIdx || null, null) : null;
+        const baseFor = (hemi, mesh) => atlas ? buildAtlasBase(mesh, atlas[hemi], atlas.colors01, focusIdx || null, null, this.brain.atlasOpacity) : null;
         const found = results.filter(Boolean);
         if (!found.length) { scene.clearHemi('lh'); scene.clearHemi('rh'); this.brain.status = 'empty'; return; }
         let max = 0;

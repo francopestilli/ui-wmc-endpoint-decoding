@@ -519,6 +519,9 @@ section.subpanel:last-child { border-bottom: 0; }
 .brain-legend.raised .legend-grad { width: 120px; }
 .net-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin: 0 0 12px; }
 .net-hint { color: var(--soft); font-size: .82rem; }
+.opacity { display: inline-flex; align-items: center; gap: 8px; font-size: .8rem; color: var(--muted); }
+.opacity input[type=range] { width: 120px; accent-color: var(--accent); }
+.opacity b { font-family: var(--font-mono); font-weight: 500; font-size: .74rem; color: var(--ink); min-width: 3.2em; }
 .legend-grad { width: 160px; height: 10px; border-radius: 3px; background: linear-gradient(to right, #3b6cc4, #f0f0f0, #c43b3b); border: 1px solid var(--rule); }
 .legend-grad.hot { background: linear-gradient(to right, #000, #c00, #fc0, #fff); }
 @media (max-width: 700px) { .brain-stage { aspect-ratio: 4 / 3; min-height: 280px; } .seg-label { display: none; } }

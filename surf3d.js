@@ -188,7 +188,8 @@ function buildColoredGeometry(mesh, overlay, overlayMax, colorFn, base) {
 // slightly shaded by cortical thickness so sulci stay visible. `focus`
 // (1-based network index) brightens that network and greys out the rest;
 // `hidden` = Set of network indices not to paint at all.
-function buildAtlasBase(mesh, labels, colors01, focus, hidden) {
+function buildAtlasBase(mesh, labels, colors01, focus, hidden, opacity) {
+  const op = opacity === undefined ? 0.8 : Math.max(0, Math.min(1, opacity));
   const n = mesh.nVerts;
   const base = new Float32Array(n * 3);
   for (let i = 0; i < n; i++) {
@@ -198,8 +199,8 @@ function buildAtlasBase(mesh, labels, colors01, focus, hidden) {
     const c = L > 0 && (!hidden || !hidden.has(L)) ? colors01[L - 1] : null;
     if (!c) { base[i * 3] = g; base[i * 3 + 1] = g; base[i * 3 + 2] = g; continue; }
     // shade = how much of the network colour to keep over the grey
-    let k = 0.78;
-    if (focus) k = L === focus ? 0.98 : 0.18;
+    let k = 0.98 * op;
+    if (focus) k = L === focus ? 0.98 * Math.max(op, 0.6) : 0.18 * op;
     const shade = 0.75 + 0.25 * (g / 0.68);   // thickness texture
     base[i * 3]     = (g + (c[0] - g) * k) * shade;
     base[i * 3 + 1] = (g + (c[1] - g) * k) * shade;

@@ -421,7 +421,7 @@ body.explorer { height: 100vh; overflow: hidden; }
 .ws-panels { min-width: 0; }
 .glance { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .glance-how { grid-column: 1 / -1; }
-@media (max-width: 1250px) { .workspace { grid-template-columns: 1fr; } .ws-brain { position: static; } .ws-brain .brain-ws { max-width: 900px; } }
+
 .glance-card { background: var(--bg-2); border: 1px solid var(--rule); border-radius: var(--radius); padding: 11px 14px 10px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
 .glance-title { font-family: var(--font-mono); font-size: .64rem; letter-spacing: .14em; text-transform: uppercase; color: var(--soft); display: flex; justify-content: space-between; gap: 8px; }
 .glance-title span { text-transform: none; letter-spacing: 0; color: var(--soft); }
@@ -457,6 +457,8 @@ section.subpanel:last-child { border-bottom: 0; }
 .sec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin: 0 0 12px; font-size: 1.05rem; }
 .sec-head small { font-size: .8rem; font-weight: 400; color: var(--soft); }
 .ws-brain { position: sticky; top: 0; z-index: 1; }
+/* Narrow windows: one column, brain on top and NOT sticky, so the sections scroll normally beneath it */
+@media (max-width: 1100px) { .workspace { grid-template-columns: 1fr; } .ws-brain { position: static; } .ws-brain .brain-ws { max-width: 900px; } .brain-stage { aspect-ratio: 16 / 10; } }
 .subpanel .section { margin-bottom: 0; }
 
 /* Sections inside a view */
